@@ -3,10 +3,11 @@ const path = require("path");
 const { extractAndSaveJson } = require("./extractor.js");
 const { generateAndSaveMarkdown } = require("./generateMarkdown.js");
 /**
- * @description Extracts contract deployment data from run-latest.json (foundry broadcast output) and writes to deployments/{chainId}.json
- * @usage node extract.js {chainId} [scriptName = "Deploy.s.sol"] [--skip-json | -s]
+ * @description Extracts contract deployment data from run-latest.json (foundry broadcast output) and writes to deployments/json/{chainId}.json & deployments/{chainId}.md
+ * @usage node index.js {chainId} [scriptName = "Deploy.s.sol"] [--skip-json | -s]
  * @dev
  *  currently only supports TransparentUpgradeableProxy pattern
+ *  foundry (https://getfoundry.sh) required
  */
 async function main() {
   let [chainId, scriptName, skipJsonFlag] = validateAndExtractInputs();
