@@ -21,7 +21,11 @@ function generateAndSaveMarkdown(input) {
     )
     .join("\n\t- ");
   out += `\n- [Deployment History](#deployment-history)`;
-  const { deploymentHistoryMd, allVersions } = generateDeploymentHistory(input.history, input.latest, input.chainId);
+  const { deploymentHistoryMd, allVersions } = generateDeploymentHistory(
+    input.history,
+    input.latest,
+    input.chainId,
+  );
   out += Object.keys(allVersions)
     .map((v) => `\n\t- [${v}](#${v.replace(/\./g, "")})`)
     .join("");
@@ -51,16 +55,32 @@ function generateAndSaveMarkdown(input) {
     .map(
       ([
         contractName,
-        { address, deploymentTxn, version, commitHash, timestamp, proxyType, implementation, proxyAdmin },
+        {
+          address,
+          deploymentTxn,
+          version,
+          commitHash,
+          timestamp,
+          proxyType,
+          implementation,
+          proxyAdmin,
+        },
       ]) => `### ${contractName.replace(/([A-Z])/g, " $1").trim()}
   
   Address: ${getEtherscanLinkMd(input.chainId, address)}
   
   Deployment Txn: ${getEtherscanLinkMd(input.chainId, deploymentTxn, "tx")}
   
-  ${typeof version === "undefined" ? "" : `Version: [${version}](${projectGitUrl}/releases/tag/${version})`}
+  ${
+    typeof version === "undefined"
+      ? ""
+      : `Version: [${version}](${projectGitUrl}/releases/tag/${version})`
+  }
   
-  Commit Hash: [${commitHash.slice(0, 7)}](${projectGitUrl}/commit/${commitHash})
+  Commit Hash: [${commitHash.slice(
+    0,
+    7,
+  )}](${projectGitUrl}/commit/${commitHash})
   
   ${prettifyTimestamp(timestamp)}
   ${generateProxyInformationIfProxy({
@@ -84,7 +104,11 @@ function generateAndSaveMarkdown(input) {
   
   ${deploymentHistoryMd}`;
 
-  writeFileSync(join(__dirname, `../../deployments/${input.chainId}.md`), out, "utf-8");
+  writeFileSync(
+    join(__dirname, `../../deployments/${input.chainId}.md`),
+    out,
+    "utf-8",
+  );
   console.log("Generation complete!");
 }
 
@@ -109,7 +133,9 @@ function getEtherscanLinkMd(chainId, address, slug = "address") {
 }
 function getEtherscanLinkAnchor(chainId, address, slug = "address") {
   const etherscanLink = getEtherscanLink(chainId, address, slug);
-  return etherscanLink.length ? `<a href="${etherscanLink}" target="_blank">${address}</a>` : address;
+  return etherscanLink.length
+    ? `<a href="${etherscanLink}" target="_blank">${address}</a>`
+    : address;
 }
 
 function generateProxyInformationIfProxy({
@@ -125,10 +151,15 @@ function generateProxyInformationIfProxy({
   if (typeof proxyType === "undefined") return out;
   out += `\n\n_Proxy Information_\n\n`;
   out += `\n\nProxy Type: ${proxyType}\n\n`;
-  out += `\n\nImplementation: ${getEtherscanLinkMd(chainId, implementation)}\n\n`;
+  out += `\n\nImplementation: ${getEtherscanLinkMd(
+    chainId,
+    implementation,
+  )}\n\n`;
   out += `\n\nProxy Admin: ${getEtherscanLinkMd(chainId, proxyAdmin)}\n\n`;
 
-  const historyOfProxy = history.filter((h) => h?.contracts[contractName]?.address === address);
+  const historyOfProxy = history.filter(
+    (h) => h?.contracts[contractName]?.address === address,
+  );
   if (historyOfProxy.length === 0) return out;
   out += `\n`;
   out += `
@@ -150,7 +181,10 @@ function generateProxyInformationIfProxy({
       <tr>
           <td><a href="${projectGitUrl}/releases/tag/${version}" target="_blank">${version}</a></td>
           <td>${getEtherscanLinkAnchor(chainId, implementation)}</td>
-          <td><a href="${projectGitUrl}/commit/${commitHash}" target="_blank">${commitHash.slice(0, 7)}</a></td>
+          <td><a href="${projectGitUrl}/commit/${commitHash}" target="_blank">${commitHash.slice(
+            0,
+            7,
+          )}</a></td>
       </tr>`,
         )
         .join("")}
@@ -164,24 +198,35 @@ function generateDeploymentHistory(history, latest, chainId) {
   let allVersions = {};
   if (history.length === 0) {
     const inputPath = join(__dirname, "../1.0.0/input.json");
-    const input = JSON.parse((existsSync(inputPath) && readFileSync(inputPath, "utf-8")) || `{"${chainId}":{}}`)[
-      chainId
-    ];
-    allVersions = Object.entries(latest).reduce((obj, [contractName, contract]) => {
-      if (typeof contract.version === "undefined") return obj;
-      if (!obj[contract.version]) obj[contract.version] = [];
-      obj[contract.version].push({ contract, contractName, input });
-      return obj;
-    }, {});
-  } else {
-    allVersions = history.reduce((obj, { contracts, input, timestamp, commitHash }) => {
-      Object.entries(contracts).forEach(([contractName, contract]) => {
-        if (typeof contract.version === "undefined") return;
+    const input = JSON.parse(
+      (existsSync(inputPath) && readFileSync(inputPath, "utf-8")) ||
+        `{"${chainId}":{}}`,
+    )[chainId];
+    allVersions = Object.entries(latest).reduce(
+      (obj, [contractName, contract]) => {
+        if (typeof contract.version === "undefined") return obj;
         if (!obj[contract.version]) obj[contract.version] = [];
-        obj[contract.version].push({ contract: { ...contract, timestamp, commitHash }, contractName, input });
-      });
-      return obj;
-    }, {});
+        obj[contract.version].push({ contract, contractName, input });
+        return obj;
+      },
+      {},
+    );
+  } else {
+    allVersions = history.reduce(
+      (obj, { contracts, input, timestamp, commitHash }) => {
+        Object.entries(contracts).forEach(([contractName, contract]) => {
+          if (typeof contract.version === "undefined") return;
+          if (!obj[contract.version]) obj[contract.version] = [];
+          obj[contract.version].push({
+            contract: { ...contract, timestamp, commitHash },
+            contractName,
+            input,
+          });
+        });
+        return obj;
+      },
+      {},
+    );
   }
 
   let out = ``;
@@ -192,9 +237,10 @@ function generateDeploymentHistory(history, latest, chainId) {
   
   ${prettifyTimestamp(contractInfos[0].contract.timestamp)}
   
-  Commit Hash: [${contractInfos[0].contract.commitHash.slice(0, 7)}](${projectGitUrl}/commit/${
-        contractInfos[0].contract.commitHash
-      })
+  Commit Hash: [${contractInfos[0].contract.commitHash.slice(
+    0,
+    7,
+  )}](${projectGitUrl}/commit/${contractInfos[0].contract.commitHash})
   
   Deployed contracts:
   
@@ -202,17 +248,22 @@ function generateDeploymentHistory(history, latest, chainId) {
     .map(
       ({ contract, contractName }) => `
       <details>
-      <summary><a href="${getEtherscanLink(chainId, contract.address) || contract.address}">${contractName
-        .replace(/([A-Z])/g, " $1")
-        .trim()}</a>${
+      <summary><a href="${
+        getEtherscanLink(chainId, contract.address) || contract.address
+      }">${contractName.replace(/([A-Z])/g, " $1").trim()}</a>${
         contract.proxyType
           ? ` (<a href="${
-              getEtherscanLink(chainId, contract.implementation) || contract.implementation
+              getEtherscanLink(chainId, contract.implementation) ||
+              contract.implementation
             }">Implementation</a>)`
           : ``
       }${
         isTransaction(contract.input.initializationTxn)
-          ? ` (<a href="${getEtherscanLink(chainId, contract.input.initializationTxn, "tx")}">Initialization Txn</a>)`
+          ? ` (<a href="${getEtherscanLink(
+              chainId,
+              contract.input.initializationTxn,
+              "tx",
+            )}">Initialization Txn</a>)`
           : ``
       }</summary>
       ${
@@ -230,7 +281,11 @@ function generateDeploymentHistory(history, latest, chainId) {
           <td>${key}</td>
           <td>${
             isAddress(value) || isTransaction(value)
-              ? getEtherscanLinkAnchor(chainId, value, isTransaction(value) ? "tx" : "address")
+              ? getEtherscanLinkAnchor(
+                  chainId,
+                  value,
+                  isTransaction(value) ? "tx" : "address",
+                )
               : value
           }</td>
       </tr>`,
@@ -270,7 +325,10 @@ function getProjectUrl() {
 }
 
 function getProjectName() {
-  return execSync(`git remote get-url origin | cut -d '/' -f 5 | cut -d '.' -f 1`, { encoding: "utf-8" }).trim();
+  return execSync(
+    `git remote get-url origin | cut -d '/' -f 5 | cut -d '.' -f 1`,
+    { encoding: "utf-8" },
+  ).trim();
 }
 
 module.exports = { generateAndSaveMarkdown };

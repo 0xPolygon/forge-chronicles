@@ -19,15 +19,26 @@ async function extractAndSaveJson(scriptName, chainId) {
   // ========== PREPARE FILES ==========
 
   // For getVersion helper
-  const config = JSON.parse(fs.readFileSync(path.join(__dirname, "../config.json"), "utf-8"));
-  const rpcUrl = config.defaultRpc[chainId] || process.env.RPC_URL || "http://127.0.0.1:8545";
+  const config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../config.json"), "utf-8"),
+  );
+  const rpcUrl =
+    config.defaultRpc[chainId] ||
+    process.env.RPC_URL ||
+    "http://127.0.0.1:8545";
 
   // Latest broadcast
-  const filePath = path.join(__dirname, `../../broadcast/${scriptName}/${chainId}/run-latest.json`);
+  const filePath = path.join(
+    __dirname,
+    `../../broadcast/${scriptName}/${chainId}/run-latest.json`,
+  );
   const jsonData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
 
   // Previously extracted data
-  const recordFilePath = path.join(__dirname, `../../deployments/json/${chainId}.json`);
+  const recordFilePath = path.join(
+    __dirname,
+    `../../deployments/json/${chainId}.json`,
+  );
   let recordData;
 
   // Try to read previously extracted data
@@ -76,7 +87,9 @@ async function extractAndSaveJson(scriptName, chainId) {
   };
 
   // Filter CREATE transactions
-  const createTransactions = jsonData.transactions.filter((transaction) => transaction.transactionType === "CREATE");
+  const createTransactions = jsonData.transactions.filter(
+    (transaction) => transaction.transactionType === "CREATE",
+  );
 
   // For history
   const contracts = {};
@@ -105,7 +118,10 @@ async function extractAndSaveJson(scriptName, chainId) {
             proxyType: matchedItem.proxyType,
             deploymentTxn: matchedItem.deploymentTxn,
             input: {
-              constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
+              constructor: matchConstructorInputs(
+                getABI(contractName),
+                currentTransaction.arguments,
+              ),
               initializationTxn: "TODO",
             },
           };
@@ -122,7 +138,9 @@ async function extractAndSaveJson(scriptName, chainId) {
           // The latest wasn't upgradeable
           // CASE: Duplicate non-upgradeable contract
           // TODO Allow if newer version.
-          console.error(`${contractName} is duplicate non-upgradeable. Aborted.`);
+          console.error(
+            `${contractName} is duplicate non-upgradeable. Aborted.`,
+          );
           process.exit(1);
         }
       } else {
@@ -145,11 +163,16 @@ async function extractAndSaveJson(scriptName, chainId) {
               proxyAdmin: nextTransaction.additionalContracts[0].address,
               address: nextTransaction.contractAddress,
               proxy: true,
-              version: (await getVersion(nextTransaction.contractAddress, rpcUrl)).version,
+              version: (
+                await getVersion(nextTransaction.contractAddress, rpcUrl)
+              ).version,
               proxyType: nextTransaction.contractName,
               deploymentTxn: nextTransaction.hash,
               input: {
-                constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
+                constructor: matchConstructorInputs(
+                  getABI(contractName),
+                  currentTransaction.arguments,
+                ),
                 initializationTxn: "TODO",
               },
             };
@@ -172,9 +195,16 @@ async function extractAndSaveJson(scriptName, chainId) {
           const nonUpgradeableItem = {
             ...nonUpgradeableTemplate,
             address: currentTransaction.contractAddress,
-            version: (await getVersion(currentTransaction.contractAddress, rpcUrl)).version,
+            version: (
+              await getVersion(currentTransaction.contractAddress, rpcUrl)
+            ).version,
             deploymentTxn: currentTransaction.hash,
-            input: { constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments) },
+            input: {
+              constructor: matchConstructorInputs(
+                getABI(contractName),
+                currentTransaction.arguments,
+              ),
+            },
           };
 
           // Append it to history item
@@ -198,7 +228,9 @@ async function extractAndSaveJson(scriptName, chainId) {
             break;
           } else {
             // CASE: Unexpected proxy
-            console.error(`Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`);
+            console.error(
+              `Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`,
+            );
             process.exit(1);
           }
         }
@@ -208,7 +240,11 @@ async function extractAndSaveJson(scriptName, chainId) {
 
   // ========== APPEND TO HISTORY ==========
 
-  recordData.history.push({ contracts, timestamp: jsonData.timestamp, commitHash: jsonData.commit });
+  recordData.history.push({
+    contracts,
+    timestamp: jsonData.timestamp,
+    commitHash: jsonData.commit,
+  });
 
   // ========== SAVE CHANGES ==========
 
@@ -233,9 +269,12 @@ async function extractAndSaveJson(scriptName, chainId) {
 async function getVersion(contractAddress, rpcUrl) {
   try {
     return {
-      version: execSync(`cast call ${contractAddress} 'version()(string)' --rpc-url ${rpcUrl}`, {
-        encoding: "utf-8",
-      }).trim(),
+      version: execSync(
+        `cast call ${contractAddress} 'version()(string)' --rpc-url ${rpcUrl}`,
+        {
+          encoding: "utf-8",
+        },
+      ).trim(),
     }; // note: update if not using cast
   } catch (e) {
     if (!e.message.includes("execution reverted")) console.log("ERROR", e); // contract does not implement version(), log otherwise
@@ -262,7 +301,10 @@ function matchConstructorInputs(abi, inputData) {
 // IN: contract name
 // OUT: contract ABI
 function getABI(contractName) {
-  const filePath = path.join(__dirname, `../../out/${contractName}.sol/${contractName}.json`);
+  const filePath = path.join(
+    __dirname,
+    `../../out/${contractName}.sol/${contractName}.json`,
+  );
   const fileData = fs.readFileSync(filePath, "utf8");
   const abi = JSON.parse(fileData).abi;
   return abi;
