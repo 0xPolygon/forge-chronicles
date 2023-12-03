@@ -10,10 +10,10 @@ const { generateAndSaveMarkdown } = require("./generateMarkdown.js");
  *  foundry (https://getfoundry.sh) required
  */
 async function main() {
-  let [chainId, scriptName, skipJsonFlag] = validateAndExtractInputs();
+  let [chainId, scriptName, skipJsonFlag, rpcUrl] = validateAndExtractInputs();
   let json;
-  if (!skipJsonFlag.length)
-    json = await extractAndSaveJson(scriptName, chainId);
+  if (!skipJsonFlag)
+    json = await extractAndSaveJson(scriptName, chainId, rpcUrl);
   else {
     console.log("Skipping json extraction, using existing json file");
     const recordFilePath = path.join(
@@ -28,42 +28,72 @@ async function main() {
 }
 
 function validateAndExtractInputs() {
-  let [chainId, scriptName, skipJsonFlag] = process.argv.slice(2);
-  let printUsageAndExit = false;
+  const scriptName = process.argv[2];
+
   if (
-    !(
-      typeof chainId === "string" &&
-      ["string", "undefined"].includes(typeof scriptName)
-    ) ||
-    chainId === "help"
+    scriptName === undefined ||
+    scriptName === "-h" ||
+    scriptName === "--help"
   ) {
-    if (chainId !== "help")
-      console.log(
-        `error: invalid inputs: ${JSON.stringify(
-          { chainId, scriptName },
-          null,
-          0,
-        )}\n`,
-      );
-    printUsageAndExit = true;
-  }
-  if (
-    typeof skipJsonFlag !== "undefined" &&
-    !["--skip-json", "-s"].includes(skipJsonFlag)
-  ) {
+    printHelp();
+    process.exit(0);
+  } else if (scriptName === "-v" || scriptName === "--version") {
     console.log(
-      `error: invalid flag: ${JSON.stringify({ skipJsonFlag }, null, 0)}\n`,
+      JSON.parse(
+        readFileSync("lib/deployment-log-generator/package.json", "utf8"),
+      ).version,
     );
-    printUsageAndExit = true;
+    process.exit(0);
   }
-  if (printUsageAndExit) {
-    console.log(
-      `usage: node script/utils/extract.js {chainId} [scriptName = "Deploy.s.sol"] [--skip-json | -s]`,
-    );
-    process.exit(1);
+
+  const args = process.argv.slice(3);
+  let skipJsonFlag = false;
+  let chainId = 31337;
+  let rpcUrl = process.env.RPC_URL;
+
+  for (let i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case "--skip-json":
+      case "-s":
+        skipJsonFlag = true;
+        break;
+      case "-c":
+      case "--chain-id":
+        // Check if there's another argument after --chain-id and the argument is not another command
+        if (i + 1 < args.length && args[i + 1].charAt(0) !== "-") {
+          chainId = args[i + 1];
+          i++; // Skip the next argument
+          break;
+        } else {
+          console.error(
+            "Error: --chain-id flag requires the chain id of the network where the script was executed",
+          );
+          process.exit(1);
+        }
+      case "-r":
+      case "--rpc-url":
+        // Check if there's another argument after --rpc-url and the argument is not another command
+        if (i + 1 < args.length && args[i + 1].charAt(0) !== "-") {
+          rpcUrl = args[i + 1];
+          i++; // Skip the next argument
+          break;
+        } else {
+          console.error("Error: --rpc-url flag requires an rpc url");
+          process.exit(1);
+        }
+      default:
+        printHelp();
+        process.exit(1);
+    }
   }
-  if (!scriptName?.length) scriptName = "Deploy.s.sol";
-  return [chainId, scriptName, skipJsonFlag];
+
+  return [chainId, scriptName, skipJsonFlag, rpcUrl];
 }
+
+const printHelp = () => {
+  console.log(
+    "\nUsage: node lib/deployment-log-generator <scriptName> [-c chain-id] [-r rpc-url] [-s skip-json]\n\nCommands:\n  -c, --chain-id\tChain id of the network where the script was executed (default: 31337)\n  -r, --rpc-url\t\tRPC url used to fetch the version of the contract (default: $RPC_URL). If no rpc url is provided, version fetching is skipped.\n  -s, --skip-json\tSkips the json generation and creates the markdown file using an existing json file\n\nOptions:\n  -h, --help\t\tPrint help\n  -v, --version\t\tPrint version\n\nDocumentation can be found at https://github.com/0xPolygon/deployment-log-generator",
+  );
+};
 
 main();

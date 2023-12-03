@@ -13,13 +13,10 @@ Note: Only TransparentUpgradeableProxy by OpenZeppelin is supported at the momen
 
 */
 
-async function extractAndSaveJson(scriptName, chainId) {
+async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
   console.log("Extracting...");
 
   // ========== PREPARE FILES ==========
-
-  // For getVersion helper
-  const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
 
   // Latest broadcast
   const filePath = path.join(
@@ -108,7 +105,7 @@ async function extractAndSaveJson(scriptName, chainId) {
             proxyAdmin: matchedItem.proxyAdmin,
             address: matchedItem.address,
             proxy: true,
-            version: (await getVersion(matchedItem.address, rpcUrl)).version,
+            version: await getVersion(matchedItem.address, rpcUrl),
             proxyType: matchedItem.proxyType,
             deploymentTxn: matchedItem.deploymentTxn,
             input: {
@@ -157,9 +154,10 @@ async function extractAndSaveJson(scriptName, chainId) {
               proxyAdmin: nextTransaction.additionalContracts[0].address,
               address: nextTransaction.contractAddress,
               proxy: true,
-              version: (
-                await getVersion(nextTransaction.contractAddress, rpcUrl)
-              ).version,
+              version: await getVersion(
+                nextTransaction.contractAddress,
+                rpcUrl,
+              ),
               proxyType: nextTransaction.contractName,
               deploymentTxn: nextTransaction.hash,
               input: {
@@ -189,9 +187,10 @@ async function extractAndSaveJson(scriptName, chainId) {
           const nonUpgradeableItem = {
             ...nonUpgradeableTemplate,
             address: currentTransaction.contractAddress,
-            version: (
-              await getVersion(currentTransaction.contractAddress, rpcUrl)
-            ).version,
+            version: await getVersion(
+              currentTransaction.contractAddress,
+              rpcUrl,
+            ),
             deploymentTxn: currentTransaction.hash,
             input: {
               constructor: matchConstructorInputs(
@@ -261,18 +260,19 @@ async function extractAndSaveJson(scriptName, chainId) {
 // IN: contract address and RPC URL
 // OUT: contract version (.version)
 async function getVersion(contractAddress, rpcUrl) {
+  if (rpcUrl === undefined) return undefined;
   try {
-    return {
-      version: execSync(
-        `cast call ${contractAddress} 'version()(string)' --rpc-url ${rpcUrl}`,
-        {
-          encoding: "utf-8",
-        },
-      ).trim(),
-    }; // note: update if not using cast
+    return execSync(
+      `cast call ${contractAddress} 'version()(string)' --rpc-url ${rpcUrl}`,
+      {
+        encoding: "utf-8",
+      },
+    )
+      .trim()
+      .replaceAll('"', "");
   } catch (e) {
     if (!e.message.includes("execution reverted")) console.log("ERROR", e); // contract does not implement version(), log otherwise
-    return { version: undefined };
+    return undefined;
   }
 }
 
