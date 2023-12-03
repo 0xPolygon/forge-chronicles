@@ -19,13 +19,7 @@ async function extractAndSaveJson(scriptName, chainId) {
   // ========== PREPARE FILES ==========
 
   // For getVersion helper
-  const config = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "../config.json"), "utf-8"),
-  );
-  const rpcUrl =
-    config.defaultRpc[chainId] ||
-    process.env.RPC_URL ||
-    "http://127.0.0.1:8545";
+  const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
 
   // Latest broadcast
   const filePath = path.join(
