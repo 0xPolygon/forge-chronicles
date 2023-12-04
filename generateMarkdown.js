@@ -179,7 +179,9 @@ function generateProxyInformationIfProxy({
             commitHash,
           }) => `
       <tr>
-          <td><a href="${projectGitUrl}/releases/tag/${version}" target="_blank">${version}</a></td>
+          <td>${
+            version ? `<a href="${projectGitUrl}/releases/tag/${version}" target="_blank">${version}</a>` : `N/A`
+          }</td>
           <td>${getEtherscanLinkAnchor(chainId, implementation)}</td>
           <td><a href="${projectGitUrl}/commit/${commitHash}" target="_blank">${commitHash.slice(
             0,
