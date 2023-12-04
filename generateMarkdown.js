@@ -9,7 +9,7 @@ function generateAndSaveMarkdown(input) {
   console.log("Generating markdown...");
   let out = `# ${projectName}\n\n`;
 
-  out += `\n### Table of Contents\n- [Summary](#summary)\n- [Contracts](#contracts)\n- `;
+  out += `\n### Table of Contents\n- [Summary](#summary)\n- [Contracts](#contracts)\n\t- `;
   out += Object.keys(input.latest)
     .map(
       (c) =>
