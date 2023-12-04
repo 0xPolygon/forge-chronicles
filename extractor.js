@@ -84,13 +84,9 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
 
   // For history
   const contracts = {};
-  
-  // indexes processed out of turn
-  const processedItems = new Set();
 
   // Iterate over transactions
   for (let i = 0; i < createTransactions.length; i++) {
-    if (processedItems.has(i)) continue;
     const currentTransaction = createTransactions[i];
     const contractName = currentTransaction.contractName;
 
@@ -117,7 +113,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
                 getABI(contractName),
                 currentTransaction.arguments,
               ),
-              initializationTxn: "TODO",
+              initializeData: "TODO",
             },
           };
 
@@ -169,7 +165,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
                   getABI(contractName),
                   currentTransaction.arguments,
                 ),
-                initializationTxn: "TODO",
+                initializeData: nextTransaction.arguments[2],
               },
             };
 
@@ -183,7 +179,6 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
             recordData.latest[contractName] = copyOfUpgradeableItem;
 
             proxyFound = true;
-            processedItems.add(j);
           }
         }
         // Didn't find proxy
@@ -218,20 +213,13 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
     } else {
       // ===== TYPE: PROXY =====
       // Check if proxy has been processed
-      for (const contractName in recordData.latest) {
-        if (recordData.latest.hasOwnProperty(contractName)) {
-          const latestItem = recordData.latest[contractName];
-          if (latestItem.address === currentTransaction.contractAddress) {
-            // CASE: Proxy done
-            break;
-          } else {
-            // CASE: Unexpected proxy
-            console.error(
-              `Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`,
-            );
-            process.exit(1);
-          }
-        }
+      const proxies = Object.values(recordData.latest);
+      const proxyExists = proxies.find(({ address }) => address === currentTransaction.contractAddress);
+
+      if (!proxyExists) {
+          // CASE: Unexpected proxy
+          console.error(`Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`);
+          process.exit(1);
       }
     }
   }
@@ -263,7 +251,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
 // ========== HELPERS ==========
 
 // IN: contract address and RPC URL
-// OUT: contract version (.version)
+// OUT: contract version string
 async function getVersion(contractAddress, rpcUrl) {
   if (rpcUrl === undefined) return undefined;
   try {
