@@ -84,9 +84,13 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
 
   // For history
   const contracts = {};
+  
+  // indexes processed out of turn
+  const processedItems = new Set();
 
   // Iterate over transactions
   for (let i = 0; i < createTransactions.length; i++) {
+    if (processedItems.has(i)) continue;
     const currentTransaction = createTransactions[i];
     const contractName = currentTransaction.contractName;
 
@@ -179,6 +183,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
             recordData.latest[contractName] = copyOfUpgradeableItem;
 
             proxyFound = true;
+            processedItems.add(j);
           }
         }
         // Didn't find proxy
