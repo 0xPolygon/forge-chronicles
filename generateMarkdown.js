@@ -180,7 +180,9 @@ function generateProxyInformationIfProxy({
           }) => `
       <tr>
           <td>${
-            version ? `<a href="${projectGitUrl}/releases/tag/${version}" target="_blank">${version}</a>` : `N/A`
+            version
+              ? `<a href="${projectGitUrl}/releases/tag/${version}" target="_blank">${version}</a>`
+              : `N/A`
           }</td>
           <td>${getEtherscanLinkAnchor(chainId, implementation)}</td>
           <td><a href="${projectGitUrl}/commit/${commitHash}" target="_blank">${commitHash.slice(
@@ -250,19 +252,24 @@ function generateDeploymentHistory(history, latest, chainId) {
     .map(
       ({ contract, contractName }) => `
     <details>
-    <summary><a href="${getEtherscanLink(chainId, contract.address) || contract.address}">${contractName
-        .replace(/([A-Z])/g, " $1")
-        .trim()}</a>${
-        contract.proxyType
-          ? ` (<a href="${
-              getEtherscanLink(chainId, contract.implementation) || contract.implementation
-            }">Implementation</a>)`
-          : ``
-      }${
-        isTransaction(contract.input.initializationTxn)
-          ? ` (<a href="${getEtherscanLink(chainId, contract.input.initializationTxn, "tx")}">Initialization Txn</a>)`
-          : ``
-      }</summary>
+    <summary><a href="${
+      getEtherscanLink(chainId, contract.address) || contract.address
+    }">${contractName.replace(/([A-Z])/g, " $1").trim()}</a>${
+      contract.proxyType
+        ? ` (<a href="${
+            getEtherscanLink(chainId, contract.implementation) ||
+            contract.implementation
+          }">Implementation</a>)`
+        : ``
+    }${
+      isTransaction(contract.input.initializationTxn)
+        ? ` (<a href="${getEtherscanLink(
+            chainId,
+            contract.input.initializationTxn,
+            "tx",
+          )}">Initialization Txn</a>)`
+        : ``
+    }</summary>
       ${
         Object.keys(contract.input.constructor).length
           ? `
@@ -278,7 +285,11 @@ function generateDeploymentHistory(history, latest, chainId) {
         <td>${key}</td>
         <td>${
           isAddress(value) || isTransaction(value)
-            ? getEtherscanLinkAnchor(chainId, value, isTransaction(value) ? "tx" : "address")
+            ? getEtherscanLinkAnchor(
+                chainId,
+                value,
+                isTransaction(value) ? "tx" : "address",
+              )
             : value
         }</td>
     </tr>`,

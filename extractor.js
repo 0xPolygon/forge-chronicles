@@ -214,12 +214,16 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
       // ===== TYPE: PROXY =====
       // Check if proxy has been processed
       const proxies = Object.values(recordData.latest);
-      const proxyExists = proxies.find(({ address }) => address === currentTransaction.contractAddress);
+      const proxyExists = proxies.find(
+        ({ address }) => address === currentTransaction.contractAddress,
+      );
 
       if (!proxyExists) {
-          // CASE: Unexpected proxy
-          console.error(`Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`);
-          process.exit(1);
+        // CASE: Unexpected proxy
+        console.error(
+          `Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`,
+        );
+        process.exit(1);
       }
     }
   }
