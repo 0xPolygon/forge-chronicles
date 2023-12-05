@@ -13,9 +13,7 @@ Note: Only TransparentUpgradeableProxy by OpenZeppelin is supported at the momen
 
 */
 
-async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
-  console.log("Extracting...");
-
+async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
   // ========== PREPARE FILES ==========
 
   // Latest broadcast
@@ -47,7 +45,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
   // Abort if commit processed
   if (recordData.history.length > 0) {
     const latestEntry = recordData.history[recordData.history.length - 1];
-    if (latestEntry.commitHash === jsonData.commit) {
+    if (latestEntry.commitHash === jsonData.commit && !force) {
       console.error(`Commit ${jsonData.commit} already processed. Aborted.`);
       process.exit(1);
     }
@@ -247,8 +245,6 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl) {
   // Write to file
   fs.writeFileSync(recordFilePath, JSON.stringify(recordData, null, 2), "utf8");
 
-  console.log(`Extraction complete!`);
-
   return recordData;
 }
 
@@ -303,12 +299,8 @@ function getABI(contractName) {
 
 // Note: Ensures contract artifacts are up-to-date.
 function prepareArtifacts() {
-  console.log(`Preparing artifacts...`);
-
   execSync("forge clean");
   execSync("forge build");
-
-  console.log(`Artifacts ready. Continuing.`);
 }
 
 module.exports = { extractAndSaveJson };

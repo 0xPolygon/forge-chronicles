@@ -10,10 +10,14 @@ const { generateAndSaveMarkdown } = require("./generateMarkdown.js");
  *  foundry (https://getfoundry.sh) required
  */
 async function main() {
-  let [chainId, scriptName, skipJsonFlag, rpcUrl] = validateAndExtractInputs();
+  let [chainId, scriptName, skipJsonFlag, rpcUrl, force] =
+    validateAndExtractInputs();
+  if (rpcUrl === undefined) {
+    console.warn("\u{26A0} No rpc url provided, skipping version fetching");
+  }
   let json;
   if (!skipJsonFlag)
-    json = await extractAndSaveJson(scriptName, chainId, rpcUrl);
+    json = await extractAndSaveJson(scriptName, chainId, rpcUrl, force);
   else {
     console.log("Skipping json extraction, using existing json file");
     const recordFilePath = path.join(
@@ -47,12 +51,17 @@ function validateAndExtractInputs() {
   }
 
   const args = process.argv.slice(3);
+  let forceFlag = false;
   let skipJsonFlag = false;
   let chainId = 31337;
   let rpcUrl = process.env.RPC_URL;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
+      case "--force":
+      case "-f":
+        forceFlag = true;
+        break;
       case "--skip-json":
       case "-s":
         skipJsonFlag = true;
@@ -87,7 +96,7 @@ function validateAndExtractInputs() {
     }
   }
 
-  return [chainId, scriptName, skipJsonFlag, rpcUrl];
+  return [chainId, scriptName, skipJsonFlag, rpcUrl, forceFlag];
 }
 
 const printHelp = () => {

@@ -6,7 +6,6 @@ const projectGitUrl = getProjectUrl();
 const projectName = getProjectName();
 
 function generateAndSaveMarkdown(input) {
-  console.log("Generating markdown...");
   let out = `# ${projectName}\n\n`;
 
   out += `\n### Table of Contents\n- [Summary](#summary)\n- [Contracts](#contracts)\n\t- `;
