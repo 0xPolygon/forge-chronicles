@@ -13,6 +13,7 @@ Note: Only TransparentUpgradeableProxy by OpenZeppelin is supported at the momen
 
 */
 
+// Note: Do not force in production.
 async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
   // ========== PREPARE FILES ==========
 
@@ -44,7 +45,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
 
   // Abort if commit processed
   if (recordData.history.length > 0) {
-    const latestEntry = recordData.history[recordData.history.length - 1];
+    const latestEntry = recordData.history[0];
     if (latestEntry.commitHash === jsonData.commit && !force) {
       console.error(`Commit ${jsonData.commit} already processed. Aborted.`);
       process.exit(1);
@@ -88,6 +89,12 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
     const currentTransaction = createTransactions[i];
     const contractName = currentTransaction.contractName;
 
+    // CASE: Contract name not unique
+    if (contractName === null) {
+      console.error("Contract name not unique. Aborted.");
+      process.exit(1);
+    }
+
     // ====== TYPE: CONTRACT NOT PROXY =====
     if (contractName !== "TransparentUpgradeableProxy") {
       // Contract exists in latest
@@ -96,7 +103,16 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
 
         // The latest is upgradeable
         if (matchedItem.proxy) {
-          // CASE: New implementation created
+
+          // CASE: Unused implementation
+          if (await getImplementation(matchedItem.address, rpcUrl) !== currentTransaction.contractAddress) {
+            console.error(
+              `${contractName} not upgraded to ${currentTransaction.contractAddress}. Aborted.`,
+            );
+            process.exit(1);
+          }
+
+          // CASE: New implementation
           const upgradeableItem = {
             ...upgradeableTemplate,
             implementation: currentTransaction.contractAddress,
@@ -111,7 +127,6 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
                 getABI(contractName),
                 currentTransaction.arguments,
               ),
-              initializeData: "TODO",
             },
           };
 
@@ -125,12 +140,31 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
           recordData.latest[contractName] = copyOfUpgradeableItem;
         } else {
           // The latest wasn't upgradeable
-          // CASE: Duplicate non-upgradeable contract
-          // TODO Allow if newer version.
-          console.error(
-            `${contractName} is duplicate non-upgradeable. Aborted.`,
-          );
-          process.exit(1);
+          // CASE: Existing non-upgradeable contract
+          const nonUpgradeableItem = {
+            ...nonUpgradeableTemplate,
+            address: currentTransaction.contractAddress,
+            version: await getVersion(
+              currentTransaction.contractAddress,
+              rpcUrl,
+            ),
+            deploymentTxn: currentTransaction.hash,
+            input: {
+              constructor: matchConstructorInputs(
+                getABI(contractName),
+                currentTransaction.arguments,
+              ),
+            },
+          };
+
+          // Append it to history item
+          contracts[contractName] = nonUpgradeableItem;
+          // Update latest item
+          let copyOfNonUpgradeableItem = { ...nonUpgradeableItem };
+          delete copyOfNonUpgradeableItem.input;
+          copyOfNonUpgradeableItem.timestamp = jsonData.timestamp;
+          copyOfNonUpgradeableItem.commitHash = jsonData.commit;
+          recordData.latest[contractName] = copyOfNonUpgradeableItem;
         }
       } else {
         // Contract didn't exist in latest
@@ -226,9 +260,9 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
     }
   }
 
-  // ========== APPEND TO HISTORY ==========
+  // ========== PREPEND TO HISTORY ==========
 
-  recordData.history.push({
+  recordData.history.unshift({
     contracts,
     timestamp: jsonData.timestamp,
     commitHash: jsonData.commit,
@@ -264,7 +298,29 @@ async function getVersion(contractAddress, rpcUrl) {
       .trim()
       .replaceAll('"', "");
   } catch (e) {
-    if (!e.message.includes("execution reverted")) console.log("ERROR", e); // contract does not implement version(), log otherwise
+    if (!e.message.includes("execution reverted")) console.log(e); // contract does not implement version(), log otherwise
+    return undefined;
+  }
+}
+
+// IN: contract address and RPC URL
+// OUT: implementation address
+async function getImplementation(contractAddress, rpcUrl) {
+  if (rpcUrl === undefined) return undefined;
+  try {
+    let result = execSync(
+      `cast storage ${contractAddress} '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc' --rpc-url ${rpcUrl}`,
+      {
+        encoding: "utf-8",
+      },
+    )
+      .trim()
+      .replaceAll('"', "");
+
+    let last20Bytes = "0x" + result.slice(-40); // Each byte is 2 characters, so 20 bytes is 40 characters
+    return last20Bytes;
+  } catch (e) {
+    console.log(e);
     return undefined;
   }
 }
@@ -277,6 +333,13 @@ function matchConstructorInputs(abi, inputData) {
   const constructorFunc = abi.find((func) => func.type === "constructor");
 
   if (constructorFunc && inputData) {
+    if (constructorFunc.inputs.length !== inputData.length) {
+      console.error(
+        `Couldn't match constructor inputs. Aborted.`,
+      );
+      process.exit(1);
+    }
+
     constructorFunc.inputs.forEach((input, index) => {
       inputMapping[input.name] = inputData[index];
     });
@@ -299,7 +362,6 @@ function getABI(contractName) {
 
 // Note: Ensures contract artifacts are up-to-date.
 function prepareArtifacts() {
-  execSync("forge clean");
   execSync("forge build");
 }
 
