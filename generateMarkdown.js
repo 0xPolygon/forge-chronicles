@@ -26,7 +26,7 @@ function generateAndSaveMarkdown(input) {
     input.chainId,
   );
   out += Object.keys(allVersions)
-    .map((v) => `\n\t- [${v}](#${v.replace(/\./g, "")})`)
+    .map((v) => `\n\t- [${v}](#${v.replace(/\. /g, "").replace(/ /g, "-").toLowerCase()})`)
     .join("");
 
   out += `\n\n## Summary
@@ -197,109 +197,91 @@ function generateProxyInformationIfProxy({
   return out;
 }
 
-function generateDeploymentHistory(history, latest, chainId) {
-  let allVersions = {};
-  if (history.length === 0) {
-    const inputPath = join(__dirname, "../1.0.0/input.json");
-    const input = JSON.parse(
-      (existsSync(inputPath) && readFileSync(inputPath, "utf-8")) ||
-        `{"${chainId}":{}}`,
-    )[chainId];
-    allVersions = Object.entries(latest).reduce(
-      (obj, [contractName, contract]) => {
-        if (typeof contract.version === "undefined") return obj;
-        if (!obj[contract.version]) obj[contract.version] = [];
-        obj[contract.version].push({ contract, contractName, input });
-        return obj;
-      },
-      {},
+function generateDeploymentHistory(history, chainId) {
+  const ghostVersion = "0.0.0";
+
+  const allVersions = history.reduce((obj, { contracts, timestamp, commitHash }) => {
+    const highestVersion = Object.values(contracts).reduce(
+      (highest, { version }) => (version && version > highest ? version : highest),
+      ghostVersion,
     );
-  } else {
-    allVersions = history.reduce(
-      (obj, { contracts, input, timestamp, commitHash }) => {
-        Object.entries(contracts).forEach(([contractName, contract]) => {
-          if (typeof contract.version === "undefined") return;
-          if (!obj[contract.version]) obj[contract.version] = [];
-          obj[contract.version].push({
-            contract: { ...contract, timestamp, commitHash },
-            contractName,
-            input,
-          });
-        });
-        return obj;
-      },
-      {},
-    );
-  }
+    const key = highestVersion === ghostVersion ? new Date(timestamp * 1000).toDateString() : highestVersion;
+    obj[key] = Object.entries(contracts).map(([contractName, contract]) => ({
+      contractName,
+      contract: { ...contract, timestamp, commitHash },
+      highestVersion,
+    }));
+    return obj;
+  }, {});
 
   let out = ``;
   out += Object.entries(allVersions)
     .map(
       ([version, contractInfos]) => `
-  ### [${version}](${projectGitUrl}/releases/tag/${version})
+  ### ${
+    contractInfos[0].highestVersion === ghostVersion
+      ? version
+      : `[${version}](${projectGitUrl}/releases/tag/${version})`
+  }
   
   ${prettifyTimestamp(contractInfos[0].contract.timestamp)}
   
-  Commit Hash: [${contractInfos[0].contract.commitHash.slice(
-    0,
-    7,
-  )}](${projectGitUrl}/commit/${contractInfos[0].contract.commitHash})
+  Commit Hash: [${contractInfos[0].contract.commitHash.slice(0, 7)}](${projectGitUrl}/commit/${
+        contractInfos[0].contract.commitHash
+      })
   
   Deployed contracts:
   
-  ${contractInfos.length > 1 ? `- `: ``}${contractInfos
-    .map(
-      ({ contract, contractName }) => `${Object.keys(contract.input.constructor).length ? `<details>
-    <summary>`: ``}<a href="${
-      getEtherscanLink(chainId, contract.address) || contract.address
-    }">${contractName.replace(/([A-Z])/g, " $1").trim()}</a>${
-      contract.proxyType
-        ? ` (<a href="${
-            getEtherscanLink(chainId, contract.implementation) ||
-            contract.implementation
-          }">Implementation</a>)`
-        : ``
-    }${
-      isTransaction(contract.input.initializationTxn)
-        ? ` (<a href="${getEtherscanLink(
-            chainId,
-            contract.input.initializationTxn,
-            "tx",
-          )}">Initialization Txn</a>)`
-        : ``
-      }
+  ${contractInfos.length > 1 ? `- ` : ``}${contractInfos
+        .map(
+          ({ contract, contractName }) => `${
+            Object.keys(contract.input.constructor).length
+              ? `<details>
+    <summary>`
+              : ``
+          }<a href="${getEtherscanLink(chainId, contract.address) || contract.address}">${contractName
+            .replace(/([A-Z])/g, " $1")
+            .trim()}</a>${
+            contract.proxyType
+              ? ` (<a href="${
+                  getEtherscanLink(chainId, contract.implementation) || contract.implementation
+                }">Implementation</a>)`
+              : ``
+          }${
+            isTransaction(contract.input.initializationTxn)
+              ? ` (<a href="${getEtherscanLink(
+                  chainId,
+                  contract.input.initializationTxn,
+                  "tx",
+                )}">Initialization Txn</a>)`
+              : ``
+          }
     ${
-        Object.keys(contract.input.constructor).length
+      Object.keys(contract.input.constructor).length
         ? `</summary>
     <table>
       <tr>
           <th>Parameter</th>
           <th>Value</th>
-      </tr>
-        ${Object.entries(contract.input.constructor)
-          .map(
-            ([key, value]) => `
-    <tr>
-        <td>${key}</td>
-        <td>${
-          isAddress(value) || isTransaction(value)
-            ? getEtherscanLinkAnchor(
-                chainId,
-                value,
-                isTransaction(value) ? "tx" : "address",
-              )
-            : value
-        }</td>
-    </tr>`,
-          )
-          .join("\n")}
+      </tr>${Object.entries(contract.input.constructor)
+        .map(
+          ([key, value]) => `
+      <tr>
+          <td>${key}</td>
+          <td>${
+            isAddress(value) || isTransaction(value)
+              ? getEtherscanLinkAnchor(chainId, value, isTransaction(value) ? "tx" : "address")
+              : value
+          }</td>
+      </tr>`,
+        )
+        .join("")}
     </table>
-  `
-          : ``
-      }
-    ${Object.keys(contract.input.constructor).length ? `</details>`: ``}`,
-    )
-    .join("\n  - ")}    
+`
+        : ``
+    }${Object.keys(contract.input.constructor).length ? `</details>` : ``}`,
+        )
+        .join("\n  - ")}    
   `,
     )
     .join("\n\n");
