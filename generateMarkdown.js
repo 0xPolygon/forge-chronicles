@@ -247,11 +247,10 @@ function generateDeploymentHistory(history, latest, chainId) {
   
   Deployed contracts:
   
-  - ${contractInfos
+  ${contractInfos.length > 1 ? `- `: ``}${contractInfos
     .map(
-      ({ contract, contractName }) => `
-    <details>
-    <summary><a href="${
+      ({ contract, contractName }) => `${Object.keys(contract.input.constructor).length ? `<details>
+    <summary>`: ``}<a href="${
       getEtherscanLink(chainId, contract.address) || contract.address
     }">${contractName.replace(/([A-Z])/g, " $1").trim()}</a>${
       contract.proxyType
@@ -268,15 +267,15 @@ function generateDeploymentHistory(history, latest, chainId) {
             "tx",
           )}">Initialization Txn</a>)`
         : ``
-    }</summary>
-      ${
+      }
+    ${
         Object.keys(contract.input.constructor).length
-          ? `
+        ? `</summary>
     <table>
-        <tr>
-            <th>Parameter</th>
-            <th>Value</th>
-        </tr>
+      <tr>
+          <th>Parameter</th>
+          <th>Value</th>
+      </tr>
         ${Object.entries(contract.input.constructor)
           .map(
             ([key, value]) => `
@@ -298,10 +297,9 @@ function generateDeploymentHistory(history, latest, chainId) {
   `
           : ``
       }
-    </details>
-              `,
+    ${Object.keys(contract.input.constructor).length ? `</details>`: ``}`,
     )
-    .join("\n- ")}    
+    .join("\n  - ")}    
   `,
     )
     .join("\n\n");
