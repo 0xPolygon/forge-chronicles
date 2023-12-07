@@ -13,14 +13,9 @@ Note: Only TransparentUpgradeableProxy by OpenZeppelin is supported at the momen
 
 */
 
-async function extractAndSaveJson(scriptName, chainId) {
-  console.log("Extracting...");
-
+// Note: Do not force in production.
+async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
   // ========== PREPARE FILES ==========
-
-  // For getVersion helper
-  const config = JSON.parse(fs.readFileSync(path.join(__dirname, "../config.json"), "utf-8"));
-  const rpcUrl = config.defaultRpc[chainId] || process.env.RPC_URL || "http://127.0.0.1:8545";
 
   // Latest broadcast
   const filePath = path.join(__dirname, `../../broadcast/${scriptName}/${chainId}/run-latest.json`);
@@ -44,8 +39,8 @@ async function extractAndSaveJson(scriptName, chainId) {
 
   // Abort if commit processed
   if (recordData.history.length > 0) {
-    const latestEntry = recordData.history[recordData.history.length - 1];
-    if (latestEntry.commitHash === jsonData.commit) {
+    const latestEntry = recordData.history[0];
+    if (latestEntry.commitHash === jsonData.commit && !force) {
       console.error(`Commit ${jsonData.commit} already processed. Aborted.`);
       process.exit(1);
     }
@@ -86,6 +81,12 @@ async function extractAndSaveJson(scriptName, chainId) {
     const currentTransaction = createTransactions[i];
     const contractName = currentTransaction.contractName;
 
+    // CASE: Contract name not unique
+    if (contractName === null) {
+      console.error("Contract name not unique. Aborted.");
+      process.exit(1);
+    }
+
     // ====== TYPE: CONTRACT NOT PROXY =====
     if (contractName !== "TransparentUpgradeableProxy") {
       // Contract exists in latest
@@ -94,19 +95,27 @@ async function extractAndSaveJson(scriptName, chainId) {
 
         // The latest is upgradeable
         if (matchedItem.proxy) {
-          // CASE: New implementation created
+          // CASE: Unused implementation
+          if (
+            (await getImplementation(matchedItem.address, rpcUrl)).toLowerCase() !==
+            currentTransaction.contractAddress.toLowerCase()
+          ) {
+            console.error(`${contractName} not upgraded to ${currentTransaction.contractAddress}. Aborted.`);
+            process.exit(1);
+          }
+
+          // CASE: New implementation
           const upgradeableItem = {
             ...upgradeableTemplate,
             implementation: currentTransaction.contractAddress,
             proxyAdmin: matchedItem.proxyAdmin,
             address: matchedItem.address,
             proxy: true,
-            version: (await getVersion(matchedItem.address, rpcUrl)).version,
+            version: await getVersion(matchedItem.address, rpcUrl),
             proxyType: matchedItem.proxyType,
             deploymentTxn: matchedItem.deploymentTxn,
             input: {
               constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
-              initializationTxn: "TODO",
             },
           };
 
@@ -120,10 +129,25 @@ async function extractAndSaveJson(scriptName, chainId) {
           recordData.latest[contractName] = copyOfUpgradeableItem;
         } else {
           // The latest wasn't upgradeable
-          // CASE: Duplicate non-upgradeable contract
-          // TODO Allow if newer version.
-          console.error(`${contractName} is duplicate non-upgradeable. Aborted.`);
-          process.exit(1);
+          // CASE: Existing non-upgradeable contract
+          const nonUpgradeableItem = {
+            ...nonUpgradeableTemplate,
+            address: currentTransaction.contractAddress,
+            version: await getVersion(currentTransaction.contractAddress, rpcUrl),
+            deploymentTxn: currentTransaction.hash,
+            input: {
+              constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
+            },
+          };
+
+          // Append it to history item
+          contracts[contractName] = nonUpgradeableItem;
+          // Update latest item
+          let copyOfNonUpgradeableItem = { ...nonUpgradeableItem };
+          delete copyOfNonUpgradeableItem.input;
+          copyOfNonUpgradeableItem.timestamp = jsonData.timestamp;
+          copyOfNonUpgradeableItem.commitHash = jsonData.commit;
+          recordData.latest[contractName] = copyOfNonUpgradeableItem;
         }
       } else {
         // Contract didn't exist in latest
@@ -145,12 +169,12 @@ async function extractAndSaveJson(scriptName, chainId) {
               proxyAdmin: nextTransaction.additionalContracts[0].address,
               address: nextTransaction.contractAddress,
               proxy: true,
-              version: (await getVersion(nextTransaction.contractAddress, rpcUrl)).version,
+              version: await getVersion(nextTransaction.contractAddress, rpcUrl),
               proxyType: nextTransaction.contractName,
               deploymentTxn: nextTransaction.hash,
               input: {
                 constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
-                initializationTxn: "TODO",
+                initializeData: nextTransaction.arguments[2],
               },
             };
 
@@ -172,9 +196,11 @@ async function extractAndSaveJson(scriptName, chainId) {
           const nonUpgradeableItem = {
             ...nonUpgradeableTemplate,
             address: currentTransaction.contractAddress,
-            version: (await getVersion(currentTransaction.contractAddress, rpcUrl)).version,
+            version: await getVersion(currentTransaction.contractAddress, rpcUrl),
             deploymentTxn: currentTransaction.hash,
-            input: { constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments) },
+            input: {
+              constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
+            },
           };
 
           // Append it to history item
@@ -190,25 +216,24 @@ async function extractAndSaveJson(scriptName, chainId) {
     } else {
       // ===== TYPE: PROXY =====
       // Check if proxy has been processed
-      for (const contractName in recordData.latest) {
-        if (recordData.latest.hasOwnProperty(contractName)) {
-          const latestItem = recordData.latest[contractName];
-          if (latestItem.address === currentTransaction.contractAddress) {
-            // CASE: Proxy done
-            break;
-          } else {
-            // CASE: Unexpected proxy
-            console.error(`Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`);
-            process.exit(1);
-          }
-        }
+      const proxies = Object.values(recordData.latest);
+      const proxyExists = proxies.find(({ address }) => address === currentTransaction.contractAddress);
+
+      if (!proxyExists) {
+        // CASE: Unexpected proxy
+        console.error(`Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`);
+        process.exit(1);
       }
     }
   }
 
-  // ========== APPEND TO HISTORY ==========
+  // ========== PREPEND TO HISTORY ==========
 
-  recordData.history.push({ contracts, timestamp: jsonData.timestamp, commitHash: jsonData.commit });
+  recordData.history.unshift({
+    contracts,
+    timestamp: jsonData.timestamp,
+    commitHash: jsonData.commit,
+  });
 
   // ========== SAVE CHANGES ==========
 
@@ -221,25 +246,43 @@ async function extractAndSaveJson(scriptName, chainId) {
   // Write to file
   fs.writeFileSync(recordFilePath, JSON.stringify(recordData, null, 2), "utf8");
 
-  console.log(`Extraction complete!`);
-
   return recordData;
 }
 
 // ========== HELPERS ==========
 
 // IN: contract address and RPC URL
-// OUT: contract version (.version)
+// OUT: contract version string
 async function getVersion(contractAddress, rpcUrl) {
+  if (rpcUrl === undefined) return undefined;
   try {
-    return {
-      version: execSync(`cast call ${contractAddress} 'version()(string)' --rpc-url ${rpcUrl}`, {
-        encoding: "utf-8",
-      }).trim(),
-    }; // note: update if not using cast
+    return execSync(`cast call ${contractAddress} 'version()(string)' --rpc-url ${rpcUrl}`, {
+      encoding: "utf-8",
+    })
+      .trim()
+      .replaceAll('"', "");
   } catch (e) {
-    if (!e.message.includes("execution reverted")) console.log("ERROR", e); // contract does not implement version(), log otherwise
-    return { version: undefined };
+    if (!e.message.includes("execution reverted")) console.log(e); // contract does not implement version(), log otherwise
+    return undefined;
+  }
+}
+
+// IN: contract address and RPC URL
+// OUT: implementation address
+async function getImplementation(contractAddress, rpcUrl) {
+  if (rpcUrl === undefined) throw new Error("No RPC URL provided, cannot verify upgrade was successful. Aborted.");
+  try {
+    return execSync(
+      `cast storage ${contractAddress} '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc' --rpc-url ${rpcUrl} | cast parse-bytes32-address`,
+      {
+        encoding: "utf-8",
+      },
+    )
+      .trim()
+      .replaceAll('"', "");
+  } catch (e) {
+    console.log(e);
+    return undefined;
   }
 }
 
@@ -251,6 +294,11 @@ function matchConstructorInputs(abi, inputData) {
   const constructorFunc = abi.find((func) => func.type === "constructor");
 
   if (constructorFunc && inputData) {
+    if (constructorFunc.inputs.length !== inputData.length) {
+      console.error(`Couldn't match constructor inputs. Aborted.`);
+      process.exit(1);
+    }
+
     constructorFunc.inputs.forEach((input, index) => {
       inputMapping[input.name] = inputData[index];
     });
@@ -270,12 +318,7 @@ function getABI(contractName) {
 
 // Note: Ensures contract artifacts are up-to-date.
 function prepareArtifacts() {
-  console.log(`Preparing artifacts...`);
-
-  execSync("forge clean");
   execSync("forge build");
-
-  console.log(`Artifacts ready. Continuing.`);
 }
 
 module.exports = { extractAndSaveJson };
