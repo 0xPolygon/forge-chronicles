@@ -85,7 +85,7 @@ function validateAndExtractInputs() {
 
 const printHelp = () => {
   console.log(
-    "\nUsage: node lib/deployment-log-generator <scriptName> [-c chain-id] [-r rpc-url] [-s skip-json]\n\nCommands:\n  -c, --chain-id\tChain id of the network where the script was executed (default: 31337)\n  -r, --rpc-url\t\tRPC url used to fetch the version of the contract (default: $RPC_URL). If no rpc url is provided, version fetching is skipped.\n  -s, --skip-json\tSkips the json generation and creates the markdown file using an existing json file\n\nOptions:\n  -h, --help\t\tPrint help\n  -v, --version\t\tPrint version\n\nDocumentation can be found at https://github.com/0xPolygon/deployment-log-generator",
+    "\nUsage: node lib/deployment-log-generator <scriptName> [-c chain-id] [-r rpc-url] [-s skip-json]\n\nCommands:\n  -c, --chain-id\tChain id of the network where the script was executed (default: 31337)\n  -r, --rpc-url\t\tRPC url used to fetch the version of the contract or verify an upgrade (default: $RPC_URL). If no rpc url is provided, version fetching is skipped.\n  -s, --skip-json\tSkips the json generation and creates the markdown file using an existing json file\n\nOptions:\n  -h, --help\t\tPrint help\n  -v, --version\t\tPrint version\n\nDocumentation can be found at https://github.com/0xPolygon/deployment-log-generator",
   );
 };
 
