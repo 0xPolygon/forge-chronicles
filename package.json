@@ -1,8 +1,8 @@
 {
-  "name": "deployment-log-generator",
-  "version": "0.1.0",
-  "description": "Extracts contract deployment data from run-latest.json (foundry broadcast output) and writes to deployments/json/{chainId}.json & deployments/{chainId}.md",
-  "main": "index.js",
-  "author": "Polygon Labs",
-  "license": "MIT"
+    "name": "deployment-log-generator",
+    "version": "0.1.0",
+    "description": "Extracts contract deployment data from run-latest.json (foundry broadcast output) and writes to deployments/json/{chainId}.json & deployments/{chainId}.md",
+    "main": "index.js",
+    "author": "Polygon Labs",
+    "license": "MIT"
 }

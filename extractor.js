@@ -18,17 +18,11 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
   // ========== PREPARE FILES ==========
 
   // Latest broadcast
-  const filePath = path.join(
-    __dirname,
-    `../../broadcast/${scriptName}/${chainId}/run-latest.json`,
-  );
+  const filePath = path.join(__dirname, `../../broadcast/${scriptName}/${chainId}/run-latest.json`);
   const jsonData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
 
   // Previously extracted data
-  const recordFilePath = path.join(
-    __dirname,
-    `../../deployments/json/${chainId}.json`,
-  );
+  const recordFilePath = path.join(__dirname, `../../deployments/json/${chainId}.json`);
   let recordData;
 
   // Try to read previously extracted data
@@ -77,9 +71,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
   };
 
   // Filter CREATE transactions
-  const createTransactions = jsonData.transactions.filter(
-    (transaction) => transaction.transactionType === "CREATE",
-  );
+  const createTransactions = jsonData.transactions.filter((transaction) => transaction.transactionType === "CREATE");
 
   // For history
   const contracts = {};
@@ -103,12 +95,9 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
 
         // The latest is upgradeable
         if (matchedItem.proxy) {
-
           // CASE: Unused implementation
-          if (await getImplementation(matchedItem.address, rpcUrl) !== currentTransaction.contractAddress) {
-            console.error(
-              `${contractName} not upgraded to ${currentTransaction.contractAddress}. Aborted.`,
-            );
+          if ((await getImplementation(matchedItem.address, rpcUrl)) !== currentTransaction.contractAddress) {
+            console.error(`${contractName} not upgraded to ${currentTransaction.contractAddress}. Aborted.`);
             process.exit(1);
           }
 
@@ -123,10 +112,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
             proxyType: matchedItem.proxyType,
             deploymentTxn: matchedItem.deploymentTxn,
             input: {
-              constructor: matchConstructorInputs(
-                getABI(contractName),
-                currentTransaction.arguments,
-              ),
+              constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
             },
           };
 
@@ -144,16 +130,10 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
           const nonUpgradeableItem = {
             ...nonUpgradeableTemplate,
             address: currentTransaction.contractAddress,
-            version: await getVersion(
-              currentTransaction.contractAddress,
-              rpcUrl,
-            ),
+            version: await getVersion(currentTransaction.contractAddress, rpcUrl),
             deploymentTxn: currentTransaction.hash,
             input: {
-              constructor: matchConstructorInputs(
-                getABI(contractName),
-                currentTransaction.arguments,
-              ),
+              constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
             },
           };
 
@@ -186,17 +166,11 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
               proxyAdmin: nextTransaction.additionalContracts[0].address,
               address: nextTransaction.contractAddress,
               proxy: true,
-              version: await getVersion(
-                nextTransaction.contractAddress,
-                rpcUrl,
-              ),
+              version: await getVersion(nextTransaction.contractAddress, rpcUrl),
               proxyType: nextTransaction.contractName,
               deploymentTxn: nextTransaction.hash,
               input: {
-                constructor: matchConstructorInputs(
-                  getABI(contractName),
-                  currentTransaction.arguments,
-                ),
+                constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
                 initializeData: nextTransaction.arguments[2],
               },
             };
@@ -219,16 +193,10 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
           const nonUpgradeableItem = {
             ...nonUpgradeableTemplate,
             address: currentTransaction.contractAddress,
-            version: await getVersion(
-              currentTransaction.contractAddress,
-              rpcUrl,
-            ),
+            version: await getVersion(currentTransaction.contractAddress, rpcUrl),
             deploymentTxn: currentTransaction.hash,
             input: {
-              constructor: matchConstructorInputs(
-                getABI(contractName),
-                currentTransaction.arguments,
-              ),
+              constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
             },
           };
 
@@ -246,15 +214,11 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
       // ===== TYPE: PROXY =====
       // Check if proxy has been processed
       const proxies = Object.values(recordData.latest);
-      const proxyExists = proxies.find(
-        ({ address }) => address === currentTransaction.contractAddress,
-      );
+      const proxyExists = proxies.find(({ address }) => address === currentTransaction.contractAddress);
 
       if (!proxyExists) {
         // CASE: Unexpected proxy
-        console.error(
-          `Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`,
-        );
+        console.error(`Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`);
         process.exit(1);
       }
     }
@@ -289,12 +253,9 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
 async function getVersion(contractAddress, rpcUrl) {
   if (rpcUrl === undefined) return undefined;
   try {
-    return execSync(
-      `cast call ${contractAddress} 'version()(string)' --rpc-url ${rpcUrl}`,
-      {
-        encoding: "utf-8",
-      },
-    )
+    return execSync(`cast call ${contractAddress} 'version()(string)' --rpc-url ${rpcUrl}`, {
+      encoding: "utf-8",
+    })
       .trim()
       .replaceAll('"', "");
   } catch (e) {
@@ -334,9 +295,7 @@ function matchConstructorInputs(abi, inputData) {
 
   if (constructorFunc && inputData) {
     if (constructorFunc.inputs.length !== inputData.length) {
-      console.error(
-        `Couldn't match constructor inputs. Aborted.`,
-      );
+      console.error(`Couldn't match constructor inputs. Aborted.`);
       process.exit(1);
     }
 
@@ -351,10 +310,7 @@ function matchConstructorInputs(abi, inputData) {
 // IN: contract name
 // OUT: contract ABI
 function getABI(contractName) {
-  const filePath = path.join(
-    __dirname,
-    `../../out/${contractName}.sol/${contractName}.json`,
-  );
+  const filePath = path.join(__dirname, `../../out/${contractName}.sol/${contractName}.json`);
   const fileData = fs.readFileSync(filePath, "utf8");
   const abi = JSON.parse(fileData).abi;
   return abi;

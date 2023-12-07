@@ -10,22 +10,16 @@ const { generateAndSaveMarkdown } = require("./generateMarkdown.js");
  *  foundry (https://getfoundry.sh) required
  */
 async function main() {
-  let [chainId, scriptName, skipJsonFlag, rpcUrl, force] =
-    validateAndExtractInputs();
+  let [chainId, scriptName, skipJsonFlag, rpcUrl, force] = validateAndExtractInputs();
   if (rpcUrl === undefined) {
     console.warn("\u{26A0} No rpc url provided, skipping version fetching");
   }
   let json;
-  if (!skipJsonFlag)
-    json = await extractAndSaveJson(scriptName, chainId, rpcUrl, force);
+  if (!skipJsonFlag) json = await extractAndSaveJson(scriptName, chainId, rpcUrl, force);
   else {
     console.log("Skipping json extraction, using existing json file");
-    const recordFilePath = path.join(
-      __dirname,
-      `../../deployments/json/${chainId}.json`,
-    );
-    if (!existsSync(recordFilePath))
-      throw new Error(`error: ${recordFilePath} does not exist`);
+    const recordFilePath = path.join(__dirname, `../../deployments/json/${chainId}.json`);
+    if (!existsSync(recordFilePath)) throw new Error(`error: ${recordFilePath} does not exist`);
     json = JSON.parse(readFileSync(recordFilePath, "utf-8"));
   }
   generateAndSaveMarkdown(json);
@@ -34,19 +28,11 @@ async function main() {
 function validateAndExtractInputs() {
   const scriptName = process.argv[2];
 
-  if (
-    scriptName === undefined ||
-    scriptName === "-h" ||
-    scriptName === "--help"
-  ) {
+  if (scriptName === undefined || scriptName === "-h" || scriptName === "--help") {
     printHelp();
     process.exit(0);
   } else if (scriptName === "-v" || scriptName === "--version") {
-    console.log(
-      JSON.parse(
-        readFileSync("lib/deployment-log-generator/package.json", "utf8"),
-      ).version,
-    );
+    console.log(JSON.parse(readFileSync("lib/deployment-log-generator/package.json", "utf8")).version);
     process.exit(0);
   }
 
@@ -74,9 +60,7 @@ function validateAndExtractInputs() {
           i++; // Skip the next argument
           break;
         } else {
-          console.error(
-            "Error: --chain-id flag requires the chain id of the network where the script was executed",
-          );
+          console.error("Error: --chain-id flag requires the chain id of the network where the script was executed");
           process.exit(1);
         }
       case "-r":
