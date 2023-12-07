@@ -20,7 +20,7 @@ function generateAndSaveMarkdown(input) {
     )
     .join("\n\t- ");
   out += `\n- [Deployment History](#deployment-history)`;
-  const { deploymentHistoryMd, allVersions } = generateDeploymentHistory(input.history, input.latest, input.chainId);
+  const { deploymentHistoryMd, allVersions } = generateDeploymentHistory(input.history, input.chainId);
   out += Object.keys(allVersions)
     .map((v) => `\n\t- [${v}](#${v.replace(/\. /g, "").replace(/ /g, "-").toLowerCase()})`)
     .join("");
