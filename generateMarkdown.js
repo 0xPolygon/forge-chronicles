@@ -1,5 +1,5 @@
 const { execSync } = require("child_process");
-const { readFileSync, existsSync, writeFileSync } = require("fs");
+const { writeFileSync } = require("fs");
 const { join } = require("path");
 
 const projectGitUrl = getProjectUrl();
