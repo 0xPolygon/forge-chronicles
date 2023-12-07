@@ -272,17 +272,14 @@ async function getVersion(contractAddress, rpcUrl) {
 async function getImplementation(contractAddress, rpcUrl) {
   if (rpcUrl === undefined) throw new Error("No RPC URL provided, cannot verify upgrade was successful. Aborted.");
   try {
-    let result = execSync(
-      `cast storage ${contractAddress} '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc' --rpc-url ${rpcUrl}`,
+    return execSync(
+      `cast storage ${contractAddress} '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc' --rpc-url ${rpcUrl} | cast parse-bytes32-address`,
       {
         encoding: "utf-8",
       },
     )
       .trim()
       .replaceAll('"', "");
-
-    let last20Bytes = "0x" + result.slice(-40); // Each byte is 2 characters, so 20 bytes is 40 characters
-    return last20Bytes;
   } catch (e) {
     console.log(e);
     return undefined;
