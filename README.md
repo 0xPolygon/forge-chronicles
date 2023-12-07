@@ -22,7 +22,7 @@ node lib/deployment-log-generator Deploy.s.sol --chain-id 1 --rpc-url https://ma
 
 ## Usage
 
-Deployment markdown & json log file will be placed within the `deployments` directory. The name of the file will be the chain id of the network where the script was executed (e.g., for Ethereum mainnet the files will be `deployments/1.md` and `deployments/json/1.json`).
+The deployment markdown & json log file will be placed within the `deployments` directory. The name of the file will be the chain id of the network where the script was executed (e.g., for Ethereum mainnet the files will be `deployments/1.md` and `deployments/json/1.json`).
 
 Supplying the RPC url _can_ be optional. When contracts are deployed, the RPC url is used to check whether the deployed contracts implement a `version()` function. If they do, the version is extracted and recorded within the log file. If no RPC url is supplied, the version check is skipped.
 
@@ -38,6 +38,20 @@ Supplying the RPC url is _required_ when an upgrade is deployed for a transparen
 | Options     |       |                                                                            |
 | --help      | -h    | Print help                                                                 |
 | --version   | -v    | Print the version number                                                   |
+
+## License
+
+​
+Licensed under either of
+​
+
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+  ​
+
+at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 ---
 
