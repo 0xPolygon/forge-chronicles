@@ -96,7 +96,10 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
         // The latest is upgradeable
         if (matchedItem.proxy) {
           // CASE: Unused implementation
-          if ((await getImplementation(matchedItem.address, rpcUrl)) !== currentTransaction.contractAddress) {
+          if (
+            (await getImplementation(matchedItem.address, rpcUrl)).toLowerCase() !==
+            currentTransaction.contractAddress.toLowerCase()
+          ) {
             console.error(`${contractName} not upgraded to ${currentTransaction.contractAddress}. Aborted.`);
             process.exit(1);
           }
@@ -267,7 +270,7 @@ async function getVersion(contractAddress, rpcUrl) {
 // IN: contract address and RPC URL
 // OUT: implementation address
 async function getImplementation(contractAddress, rpcUrl) {
-  if (rpcUrl === undefined) return undefined;
+  if (rpcUrl === undefined) throw new Error("No RPC URL provided, cannot verify upgrade was successful. Aborted.");
   try {
     let result = execSync(
       `cast storage ${contractAddress} '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc' --rpc-url ${rpcUrl}`,
