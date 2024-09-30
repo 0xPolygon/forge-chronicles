@@ -14,11 +14,11 @@ Note: Only TransparentUpgradeableProxy by OpenZeppelin is supported at the momen
 */
 
 // Note: Do not force in production.
-async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
+async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastDir) {
   // ========== PREPARE FILES ==========
 
   // Latest broadcast
-  const filePath = path.join(__dirname, `../../broadcast/${scriptName}/${chainId}/run-latest.json`);
+  const filePath = path.join(__dirname, `../../${broadcastDir}/${scriptName}/${chainId}/run-latest.json`);
   const jsonData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
 
   // Previously extracted data
