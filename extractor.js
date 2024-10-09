@@ -14,11 +14,11 @@ Note: Only TransparentUpgradeableProxy by OpenZeppelin is supported at the momen
 */
 
 // Note: Do not force in production.
-async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
+async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastDir, outDir) {
   // ========== PREPARE FILES ==========
 
   // Latest broadcast
-  const filePath = path.join(__dirname, `../../broadcast/${scriptName}/${chainId}/run-latest.json`);
+  const filePath = path.join(__dirname, `../../${broadcastDir}/${scriptName}/${chainId}/run-latest.json`);
   const jsonData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
 
   // Previously extracted data
@@ -115,7 +115,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
             proxyType: matchedItem.proxyType,
             deploymentTxn: matchedItem.deploymentTxn,
             input: {
-              constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
+              constructor: matchConstructorInputs(getABI(contractName, outDir), currentTransaction.arguments),
             },
           };
 
@@ -136,7 +136,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
             version: await getVersion(currentTransaction.contractAddress, rpcUrl),
             deploymentTxn: currentTransaction.hash,
             input: {
-              constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
+              constructor: matchConstructorInputs(getABI(contractName, outDir), currentTransaction.arguments),
             },
           };
 
@@ -173,7 +173,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
               proxyType: nextTransaction.contractName,
               deploymentTxn: nextTransaction.hash,
               input: {
-                constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
+                constructor: matchConstructorInputs(getABI(contractName, outDir), currentTransaction.arguments),
                 initializeData: nextTransaction.arguments[2],
               },
             };
@@ -199,7 +199,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force) {
             version: await getVersion(currentTransaction.contractAddress, rpcUrl),
             deploymentTxn: currentTransaction.hash,
             input: {
-              constructor: matchConstructorInputs(getABI(contractName), currentTransaction.arguments),
+              constructor: matchConstructorInputs(getABI(contractName, outDir), currentTransaction.arguments),
             },
           };
 
@@ -309,8 +309,8 @@ function matchConstructorInputs(abi, inputData) {
 
 // IN: contract name
 // OUT: contract ABI
-function getABI(contractName) {
-  const filePath = path.join(__dirname, `../../out/${contractName}.sol/${contractName}.json`);
+function getABI(contractName, outDir) {
+  const filePath = path.join(__dirname, `../../${outDir}/${contractName}.sol/${contractName}.json`);
   const fileData = fs.readFileSync(filePath, "utf8");
   const abi = JSON.parse(fileData).abi;
   return abi;
