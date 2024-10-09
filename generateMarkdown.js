@@ -59,7 +59,7 @@ Deployment Txn: ${getEtherscanLinkMd(input.chainId, deploymentTxn, "tx")}
   
 ${typeof version === "undefined" ? "" : `Version: [${version}](${projectGitUrl}/releases/tag/${version})`}
   
-Commit Hash: [${commitHash.slice(0, 7)}](${projectGitUrl}/commit/${commitHash})
+${commitHash ? `Commit Hash: [${commitHash.slice(0, 7)}](${projectGitUrl}/commit/${commitHash})` : ``}
   
 ${prettifyTimestamp(timestamp)}
 ${generateProxyInformationIfProxy({
@@ -211,14 +211,18 @@ ${contractInfos
     }
   </summary>
   <table>
-    <tr>
+    ${
+      contract.commitHash
+        ? `<tr>
       <td>Commit hash: <a href="${projectGitUrl}/commit/${
         contract.commitHash
       }" target="_blank">${contract.commitHash.slice(0, 7)}</a></td>
-    </tr>
-    ${
-      Object.keys(contract.input.constructor).length
-        ? `<tr>
+    </tr>`
+        : ``
+    }
+${
+  Object.keys(contract.input.constructor).length
+    ? `<tr>
       <th>Parameter</th>
       <th>Value</th>
     </tr>${Object.entries(contract.input.constructor)
@@ -236,11 +240,11 @@ ${contractInfos
       .join("")}
   </table>
 `
-        : ``
-    }${
+    : ``
+}${
       Object.keys(contract.input.constructor).length
         ? `</details>`
-        : `</table>
+        : `  </table>
 </details>`
     }`,
   )
