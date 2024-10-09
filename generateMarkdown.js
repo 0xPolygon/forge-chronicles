@@ -189,20 +189,14 @@ function generateDeploymentHistory(history, chainId) {
       }
   
   ${contractInfos[0].highestVersion === ghostVersion ? "" : prettifyTimestamp(contractInfos[0].contract.timestamp)}
-Commit Hash: [${contractInfos[0].contract.commitHash.slice(0, 7)}](${projectGitUrl}/commit/${
-        contractInfos[0].contract.commitHash
-      })
   
 Deployed contracts:
   
 ${contractInfos
   .map(
-    ({ contract, contractName }) => `${
-      Object.keys(contract.input.constructor).length
-        ? `- <details>
-    <summary>`
-        : `- `
-    }<a href="${getEtherscanLink(chainId, contract.address) || contract.address}">${contractName
+    ({ contract, contractName }) => `<details>
+  <summary>
+    <a href="${getEtherscanLink(chainId, contract.address) || contract.address}">${contractName
       .replace(/([A-Z])/g, " $1")
       .trim()}</a>${
       contract.proxyType
@@ -215,30 +209,40 @@ ${contractInfos
         ? ` (<a href="${getEtherscanLink(chainId, contract.input.initializationTxn, "tx")}">Initialization Txn</a>)`
         : ``
     }
+  </summary>
+  <table>
+    <tr>
+      <td>Commit hash: <a href="${projectGitUrl}/commit/${
+        contract.commitHash
+      }" target="_blank">${contract.commitHash.slice(0, 7)}</a></td>
+    </tr>
     ${
       Object.keys(contract.input.constructor).length
-        ? `</summary>
-    <table>
-      <tr>
-          <th>Parameter</th>
-          <th>Value</th>
-      </tr>${Object.entries(contract.input.constructor)
-        .map(
-          ([key, value]) => `
-      <tr>
-          <td>${key}</td>
-          <td>${
-            isAddress(value) || isTransaction(value)
-              ? getEtherscanLinkAnchor(chainId, value, isTransaction(value) ? "tx" : "address")
-              : value
-          }</td>
-      </tr>`,
-        )
-        .join("")}
-    </table>
+        ? `<tr>
+      <th>Parameter</th>
+      <th>Value</th>
+    </tr>${Object.entries(contract.input.constructor)
+      .map(
+        ([key, value]) => `
+    <tr>
+      <td>${key}</td>
+      <td>${
+        isAddress(value) || isTransaction(value)
+          ? getEtherscanLinkAnchor(chainId, value, isTransaction(value) ? "tx" : "address")
+          : value
+      }</td>
+    </tr>`,
+      )
+      .join("")}
+  </table>
 `
         : ``
-    }${Object.keys(contract.input.constructor).length ? `  </details>` : ``}`,
+    }${
+      Object.keys(contract.input.constructor).length
+        ? `</details>`
+        : `</table>
+</details>`
+    }`,
   )
   .join("\n")}    
   `,
