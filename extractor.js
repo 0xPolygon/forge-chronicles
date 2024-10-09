@@ -71,7 +71,9 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
   };
 
   // Filter CREATE transactions
-  const createTransactions = jsonData.transactions.filter((transaction) => transaction.transactionType === "CREATE");
+  const createTransactions = jsonData.transactions.filter((transaction) => {
+    return transaction.transactionType === "CREATE" || transaction.transactionType === "CREATE2";
+  });
 
   // For history
   const contracts = {};
