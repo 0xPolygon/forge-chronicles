@@ -91,6 +91,26 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
 
     // ====== TYPE: CONTRACT NOT PROXY =====
     if (contractName !== "TransparentUpgradeableProxy") {
+      let duplicate = false;
+      for (let j = 0; j < recordData.history.length; j++) {
+        const historyItem = recordData.history[j];
+        if (historyItem.contracts.hasOwnProperty(contractName)) {
+          const historyContract = historyItem.contracts[contractName];
+          if (
+            historyContract.address === currentTransaction.contractAddress &&
+            historyContract.deploymentTxn === currentTransaction.hash
+          ) {
+            // CASE: Contract already processed
+            duplicate = true;
+            break;
+          }
+        }
+      }
+      if (duplicate) {
+        console.log(`Skipping duplicate contract ${contractName}.`);
+        continue;
+      }
+
       // Contract exists in latest
       if (recordData.latest.hasOwnProperty(contractName)) {
         const matchedItem = recordData.latest[contractName];
@@ -230,12 +250,19 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
   }
 
   // ========== PREPEND TO HISTORY ==========
+  if (Object.keys(contracts).length === 0) {
+    console.log("No new contracts found. Aborted.");
+    process.exit(1);
+  }
 
-  recordData.history.unshift({
+  recordData.history.push({
     contracts,
     timestamp: jsonData.timestamp,
     commitHash: jsonData.commit,
   });
+
+  // sort recordData.history by timestamp
+  recordData.history.sort((a, b) => b.timestamp - a.timestamp);
 
   // ========== SAVE CHANGES ==========
 
