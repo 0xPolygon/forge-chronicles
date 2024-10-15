@@ -28,7 +28,7 @@ async function main() {
 function validateAndExtractInputs() {
   const scriptName = process.argv[2];
 
-  if (scriptName === undefined || scriptName === "-h" || scriptName === "--help") {
+  if (scriptName === "-h" || scriptName === "--help") {
     printHelp();
     process.exit(0);
   } else if (scriptName === "-v" || scriptName === "--version") {
@@ -36,7 +36,7 @@ function validateAndExtractInputs() {
     process.exit(0);
   }
 
-  const args = process.argv.slice(3);
+  const args = process.argv.slice(scriptName.startsWith("-") ? 2 : 3);
   let forceFlag = false;
   let skipJsonFlag = false;
   let chainId = 31337;
@@ -101,6 +101,12 @@ function validateAndExtractInputs() {
         printHelp();
         process.exit(1);
     }
+  }
+
+  if (scriptName.startsWith("-") && !skipJsonFlag) {
+    console.error("Error: scriptName is required unless --skip-json flag is used");
+    printHelp();
+    process.exit(1);
   }
 
   return [chainId, scriptName, skipJsonFlag, rpcUrl, forceFlag, broadcastDir, outDir];
