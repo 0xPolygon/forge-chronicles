@@ -233,6 +233,8 @@ ${
       <td>${
         isAddress(value) || isTransaction(value)
           ? getEtherscanLinkAnchor(chainId, value, isTransaction(value) ? "tx" : "address")
+          : typeof value === "object" && value !== null
+          ? JSON.stringify(value)
           : value
       }</td>
     </tr>`,
