@@ -291,7 +291,6 @@ async function getVersion(contractAddress, rpcUrl) {
       .trim()
       .replaceAll('"', "");
   } catch (e) {
-    if (!e.message.includes("execution reverted")) console.log(e); // contract does not implement version(), log otherwise
     return undefined;
   }
 }
@@ -310,7 +309,6 @@ async function getImplementation(contractAddress, rpcUrl) {
       .trim()
       .replaceAll('"', "");
   } catch (e) {
-    console.log(e);
     return undefined;
   }
 }
