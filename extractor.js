@@ -85,8 +85,8 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
 
     // CASE: Contract name not unique
     if (contractName === null) {
-      console.error("Contract name not unique. Aborted.");
-      process.exit(1);
+      console.log("Contract name not unique or not found. Skipping.");
+      continue;
     }
 
     // ====== TYPE: CONTRACT NOT PROXY =====
