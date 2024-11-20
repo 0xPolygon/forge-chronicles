@@ -4,8 +4,10 @@ const { join } = require("path");
 
 const projectGitUrl = getProjectUrl();
 const projectName = getProjectName();
+let explorer;
 
-function generateAndSaveMarkdown(input) {
+function generateAndSaveMarkdown(input, explorerUrl) {
+  explorer = explorerUrl;
   let out = `# ${projectName}\n\n`;
 
   out += `\n### Table of Contents\n- [Summary](#summary)\n- [Contracts](#contracts)\n\t- `;
@@ -86,6 +88,10 @@ ${deploymentHistoryMd}`;
 
 function getEtherscanLink(chainId, address, slug = "address") {
   chainId = parseInt(chainId);
+  if (explorer) {
+    if (!explorer.endsWith("/")) explorer += "/";
+    return `${explorer}${slug}/${address}`;
+  }
   switch (chainId) {
     case 1:
       return `https://etherscan.io/${slug}/${address}`;

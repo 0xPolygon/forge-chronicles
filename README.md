@@ -32,8 +32,9 @@ Supplying the RPC url is _required_ when an upgrade is deployed for a transparen
 
 | --flag          | -flag | Description                                                                |
 | --------------- | ----- | -------------------------------------------------------------------------- |
-| --rpc-url       | -r    | RPC url used for versioning and upgrade verification (default: $RPC_URL)   |
 | --chain-id      | -c    | Chain id of the network where the script was executed (default: 31337)     |
+| --rpc-url       | -r    | RPC url used for versioning and upgrade verification (default: $RPC_URL)   |
+| --explorer-url  | -e    | Explorer url to use for links in markdown (default: blockscan)             |
 | --skip-json     | -s    | Skip generation of json file and only generate markdown from existing json |
 | --broadcast-dir | -b    | Directory where the broadcast files are stored (default: broadcast)        |
 | --out-dir       | -o    | Directory where the foundry output files are stored (default: out)         |
