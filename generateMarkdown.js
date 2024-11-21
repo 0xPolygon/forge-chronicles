@@ -154,7 +154,11 @@ function generateProxyInformationIfProxy({
             version ? `<a href="${projectGitUrl}/releases/tag/${version}" target="_blank">${version}</a>` : `N/A`
           }</td>
           <td>${getEtherscanLinkAnchor(chainId, implementation)}</td>
-          <td><a href="${projectGitUrl}/commit/${commitHash}" target="_blank">${commitHash.slice(0, 7)}</a></td>
+          <td>${
+            commitHash
+              ? `<a href="${projectGitUrl}/commit/${commitHash}" target="_blank">${commitHash.slice(0, 7)}</a>`
+              : `N/A`
+          }</td>
       </tr>`,
         )
         .join("")}
