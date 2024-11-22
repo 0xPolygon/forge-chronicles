@@ -327,7 +327,17 @@ function matchConstructorInputs(abi, inputData) {
     }
 
     constructorFunc.inputs.forEach((input, index) => {
-      inputMapping[input.name] = inputData[index];
+      if (input.type === "tuple") {
+        // if input is a mapping, extract individual key value pairs
+        inputMapping[input.name] = {};
+        // trim the brackets and split by comma
+        let data = inputData[index].slice(1, inputData[index].length - 2).split(", ");
+        for (let i = 0; i < input.components.length; i++) {
+          inputMapping[input.name][input.components[i].name] = data[i];
+        }
+      } else {
+        inputMapping[input.name] = inputData[index];
+      }
     });
   }
 
