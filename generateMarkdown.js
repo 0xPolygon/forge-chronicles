@@ -57,7 +57,7 @@ function generateAndSaveMarkdown(input, explorerUrl) {
   
 Address: ${getEtherscanLinkMd(input.chainId, address)}
   
-Deployment Transaction: ${getEtherscanLinkMd(input.chainId, deploymentTxn, "tx")}
+${deploymentTxn ? `Deployment Transaction: ${getEtherscanLinkMd(input.chainId, deploymentTxn, "tx")}` : ""}
   
 ${typeof version === "undefined" ? "" : `Version: [${version}](${projectGitUrl}/releases/tag/${version})`}
   
