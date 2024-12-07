@@ -243,8 +243,8 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
 
       if (!proxyExists) {
         // CASE: Unexpected proxy
-        console.error(`Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`);
-        process.exit(1);
+        console.warn(`Unexpected proxy ${currentTransaction.contractAddress}. Skipping.`);
+        continue;
       }
     }
   }

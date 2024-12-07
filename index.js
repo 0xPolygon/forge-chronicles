@@ -12,9 +12,6 @@ const { generateAndSaveMarkdown } = require("./generateMarkdown.js");
 async function main() {
   let [chainId, scriptName, skipJsonFlag, rpcUrl, explorerUrl, force, broadcastDir, outDir] =
     validateAndExtractInputs();
-  if (rpcUrl === undefined) {
-    console.warn("\u{26A0} No rpc url provided, skipping version fetching");
-  }
   let json;
   if (!skipJsonFlag) json = await extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastDir, outDir);
   else {
@@ -41,7 +38,7 @@ function validateAndExtractInputs() {
   let forceFlag = false;
   let skipJsonFlag = false;
   let chainId = 31337;
-  let rpcUrl = process.env.RPC_URL;
+  let rpcUrl;
   let explorerUrl = undefined;
   let broadcastDir = "broadcast";
   let outDir = "out";
@@ -127,7 +124,7 @@ function validateAndExtractInputs() {
 
 const printHelp = () => {
   console.log(
-    "\nUsage: node lib/forge-chronicles <scriptName> [-c chain-id] [-r rpc-url] [-e explorer-url] [-s skip-json] [-b broadcast-dir] [-o out-dir]\n\nCommands:\n  -c, --chain-id\tChain id of the network where the script was executed (default: 31337)\n  -r, --rpc-url\t\tRPC url used to fetch the version of the contract or verify an upgrade (default: $RPC_URL). If no rpc url is provided, version fetching is skipped.\n  -e, --explorer-url\tExplorer url to use for links in markdown, If no url is provided, blockscan is used by default.\n  -s, --skip-json\tSkips the json generation and creates the markdown file using an existing json file\n  -b, --broadcast-dir\tDirectory where the broadcast files are stored (default: broadcast)\n  -o, --out-dir\t\tDirectory where the foundry output files are stored (default: out)\n  -f, --force\t\tForce the generation of the json file with the same commit\n\nOptions:\n  -h, --help\t\tPrint help\n  -v, --version\t\tPrint version\n\nDocumentation can be found at https://github.com/0xPolygon/forge-chronicles",
+    "\nUsage: node lib/forge-chronicles <scriptName> [-c chain-id] [-r rpc-url] [-e explorer-url] [-s skip-json] [-b broadcast-dir] [-o out-dir]\n\nCommands:\n  -c, --chain-id\tChain id of the network where the script was executed (default: 31337)\n  -r, --rpc-url\t\tRPC url used to fetch the version of the contract or verify an upgrade. If no rpc url is provided, version fetching is skipped.\n  -e, --explorer-url\tExplorer url to use for links in markdown, If no url is provided, blockscan is used by default.\n  -s, --skip-json\tSkips the json generation and creates the markdown file using an existing json file\n  -b, --broadcast-dir\tDirectory where the broadcast files are stored (default: broadcast)\n  -o, --out-dir\t\tDirectory where the foundry output files are stored (default: out)\n  -f, --force\t\tForce the generation of the json file with the same commit\n\nOptions:\n  -h, --help\t\tPrint help\n  -v, --version\t\tPrint version\n\nDocumentation can be found at https://github.com/0xPolygon/forge-chronicles",
   );
 };
 
