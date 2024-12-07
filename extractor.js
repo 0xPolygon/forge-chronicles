@@ -182,7 +182,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
           // Proxy found
           if (
             nextTransaction.contractName === "TransparentUpgradeableProxy" &&
-            nextTransaction.arguments[0] === currentTransaction.contractAddress
+            nextTransaction.arguments[0].toLowerCase() === currentTransaction.contractAddress.toLowerCase()
           ) {
             // CASE: New upgradeable contract
             const upgradeableItem = {
