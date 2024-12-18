@@ -251,8 +251,8 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
 
   // ========== PREPEND TO HISTORY ==========
   if (Object.keys(contracts).length === 0) {
-    console.log("No new contracts found. Aborted.");
-    process.exit(1);
+    console.log("No new contracts found.");
+    return;
   }
 
   recordData.history.push({
