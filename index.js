@@ -20,7 +20,7 @@ async function main() {
     if (!existsSync(recordFilePath)) throw new Error(`error: ${recordFilePath} does not exist`);
     json = JSON.parse(readFileSync(recordFilePath, "utf-8"));
   }
-  generateAndSaveMarkdown(json, explorerUrl);
+  if (json !== undefined) generateAndSaveMarkdown(json, explorerUrl);
 }
 
 function validateAndExtractInputs() {
