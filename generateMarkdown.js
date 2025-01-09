@@ -128,7 +128,7 @@ function generateProxyInformationIfProxy({
   out += `\n\n_Proxy Information_\n\n`;
   out += `\n\nProxy Type: ${proxyType}\n\n`;
   out += `\n\nImplementation: ${getEtherscanLinkMd(chainId, implementation)}\n\n`;
-  out += `\n\nProxy Admin: ${getEtherscanLinkMd(chainId, proxyAdmin)}\n\n`;
+  if (proxyAdmin) out += `\n\nProxy Admin: ${getEtherscanLinkMd(chainId, proxyAdmin)}\n\n`;
 
   const historyOfProxy = history.filter((h) => h?.contracts[contractName]?.address === address);
   if (historyOfProxy.length === 0) return out;

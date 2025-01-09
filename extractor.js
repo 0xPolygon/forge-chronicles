@@ -188,7 +188,7 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
             const upgradeableItem = {
               ...upgradeableTemplate,
               implementation: currentTransaction.contractAddress,
-              proxyAdmin: nextTransaction.additionalContracts[0].address,
+              proxyAdmin: nextTransaction.additionalContracts[0]?.address,
               address: nextTransaction.contractAddress,
               proxy: true,
               version: await getVersion(nextTransaction.contractAddress, rpcUrl),
