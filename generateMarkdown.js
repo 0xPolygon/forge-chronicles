@@ -99,10 +99,8 @@ function getEtherscanLink(chainId, address, slug = "address") {
       return `https://goerli.etherscan.io/${slug}/${address}`;
     case 11155111:
       return `https://sepolia.etherscan.io/${slug}/${address}`;
-    case 31337:
-      return ``;
     default:
-      return `https://blockscan.com/${slug}/${address}`;
+      return ``;
   }
 }
 function getEtherscanLinkMd(chainId, address, slug = "address") {
