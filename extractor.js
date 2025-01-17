@@ -71,7 +71,9 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
   };
 
   // Filter CREATE transactions
-  const createTransactions = jsonData.transactions.filter((transaction) => transaction.transactionType === "CREATE");
+  const createTransactions = jsonData.transactions.filter((transaction) => {
+    return transaction.transactionType === "CREATE" || transaction.transactionType === "CREATE2";
+  });
 
   // For history
   const contracts = {};
@@ -83,12 +85,32 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
 
     // CASE: Contract name not unique
     if (contractName === null) {
-      console.error("Contract name not unique. Aborted.");
-      process.exit(1);
+      console.log("Contract name not unique or not found. Skipping.");
+      continue;
     }
 
     // ====== TYPE: CONTRACT NOT PROXY =====
     if (contractName !== "TransparentUpgradeableProxy") {
+      let duplicate = false;
+      for (let j = 0; j < recordData.history.length; j++) {
+        const historyItem = recordData.history[j];
+        if (historyItem.contracts.hasOwnProperty(contractName)) {
+          const historyContract = historyItem.contracts[contractName];
+          if (
+            historyContract.address === currentTransaction.contractAddress &&
+            historyContract.deploymentTxn === currentTransaction.hash
+          ) {
+            // CASE: Contract already processed
+            duplicate = true;
+            break;
+          }
+        }
+      }
+      if (duplicate) {
+        console.log(`Skipping duplicate contract ${contractName}.`);
+        continue;
+      }
+
       // Contract exists in latest
       if (recordData.latest.hasOwnProperty(contractName)) {
         const matchedItem = recordData.latest[contractName];
@@ -160,13 +182,13 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
           // Proxy found
           if (
             nextTransaction.contractName === "TransparentUpgradeableProxy" &&
-            nextTransaction.arguments[0] === currentTransaction.contractAddress
+            nextTransaction.arguments[0].toLowerCase() === currentTransaction.contractAddress.toLowerCase()
           ) {
             // CASE: New upgradeable contract
             const upgradeableItem = {
               ...upgradeableTemplate,
               implementation: currentTransaction.contractAddress,
-              proxyAdmin: nextTransaction.additionalContracts[0].address,
+              proxyAdmin: nextTransaction.additionalContracts[0]?.address,
               address: nextTransaction.contractAddress,
               proxy: true,
               version: await getVersion(nextTransaction.contractAddress, rpcUrl),
@@ -221,19 +243,26 @@ async function extractAndSaveJson(scriptName, chainId, rpcUrl, force, broadcastD
 
       if (!proxyExists) {
         // CASE: Unexpected proxy
-        console.error(`Unexpected proxy ${currentTransaction.contractAddress}. Aborted.`);
-        process.exit(1);
+        console.warn(`Unexpected proxy ${currentTransaction.contractAddress}. Skipping.`);
+        continue;
       }
     }
   }
 
   // ========== PREPEND TO HISTORY ==========
+  if (Object.keys(contracts).length === 0) {
+    console.log("No new contracts found.");
+    return;
+  }
 
-  recordData.history.unshift({
+  recordData.history.push({
     contracts,
     timestamp: jsonData.timestamp,
     commitHash: jsonData.commit,
   });
+
+  // sort recordData.history by timestamp
+  recordData.history.sort((a, b) => b.timestamp - a.timestamp);
 
   // ========== SAVE CHANGES ==========
 
@@ -262,7 +291,6 @@ async function getVersion(contractAddress, rpcUrl) {
       .trim()
       .replaceAll('"', "");
   } catch (e) {
-    if (!e.message.includes("execution reverted")) console.log(e); // contract does not implement version(), log otherwise
     return undefined;
   }
 }
@@ -281,7 +309,6 @@ async function getImplementation(contractAddress, rpcUrl) {
       .trim()
       .replaceAll('"', "");
   } catch (e) {
-    console.log(e);
     return undefined;
   }
 }
@@ -300,7 +327,17 @@ function matchConstructorInputs(abi, inputData) {
     }
 
     constructorFunc.inputs.forEach((input, index) => {
-      inputMapping[input.name] = inputData[index];
+      if (input.type === "tuple") {
+        // if input is a mapping, extract individual key value pairs
+        inputMapping[input.name] = {};
+        // trim the brackets and split by comma
+        let data = inputData[index].slice(1, inputData[index].length - 2).split(", ");
+        for (let i = 0; i < input.components.length; i++) {
+          inputMapping[input.name][input.components[i].name] = data[i];
+        }
+      } else {
+        inputMapping[input.name] = inputData[index];
+      }
     });
   }
 

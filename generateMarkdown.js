@@ -4,8 +4,10 @@ const { join } = require("path");
 
 const projectGitUrl = getProjectUrl();
 const projectName = getProjectName();
+let explorer;
 
-function generateAndSaveMarkdown(input) {
+function generateAndSaveMarkdown(input, explorerUrl) {
+  explorer = explorerUrl;
   let out = `# ${projectName}\n\n`;
 
   out += `\n### Table of Contents\n- [Summary](#summary)\n- [Contracts](#contracts)\n\t- `;
@@ -53,35 +55,32 @@ function generateAndSaveMarkdown(input) {
         { address, deploymentTxn, version, commitHash, timestamp, proxyType, implementation, proxyAdmin },
       ]) => `### ${contractName.replace(/([A-Z])/g, " $1").trim()}
   
-  Address: ${getEtherscanLinkMd(input.chainId, address)}
+Address: ${getEtherscanLinkMd(input.chainId, address)}
   
-  Deployment Txn: ${getEtherscanLinkMd(input.chainId, deploymentTxn, "tx")}
+${deploymentTxn ? `Deployment Transaction: ${getEtherscanLinkMd(input.chainId, deploymentTxn, "tx")}` : ""}
   
-  ${typeof version === "undefined" ? "" : `Version: [${version}](${projectGitUrl}/releases/tag/${version})`}
+${typeof version === "undefined" ? "" : `Version: [${version}](${projectGitUrl}/releases/tag/${version})`}
   
-  Commit Hash: [${commitHash.slice(0, 7)}](${projectGitUrl}/commit/${commitHash})
+${commitHash ? `Commit Hash: [${commitHash.slice(0, 7)}](${projectGitUrl}/commit/${commitHash})` : ``}
   
-  ${prettifyTimestamp(timestamp)}
-  ${generateProxyInformationIfProxy({
-    address,
-    contractName,
-    proxyType,
-    implementation,
-    proxyAdmin,
-    history: input.history,
-    chainId: input.chainId,
-  })}`,
+${prettifyTimestamp(timestamp)}
+${generateProxyInformationIfProxy({
+  address,
+  contractName,
+  proxyType,
+  implementation,
+  proxyAdmin,
+  history: input.history,
+  chainId: input.chainId,
+})}`,
     )
-    .join("\n\n --- \n\n");
+    .join("\n\n---\n\n");
 
   out += `
+
+## Deployment History
   
-  ----
-  
-  
-  ### Deployment History
-  
-  ${deploymentHistoryMd}`;
+${deploymentHistoryMd}`;
 
   writeFileSync(join(__dirname, `../../deployments/${input.chainId}.md`), out, "utf-8");
   console.log("Generation complete!");
@@ -89,6 +88,10 @@ function generateAndSaveMarkdown(input) {
 
 function getEtherscanLink(chainId, address, slug = "address") {
   chainId = parseInt(chainId);
+  if (explorer) {
+    if (!explorer.endsWith("/")) explorer += "/";
+    return `${explorer}${slug}/${address}`;
+  }
   switch (chainId) {
     case 1:
       return `https://etherscan.io/${slug}/${address}`;
@@ -96,10 +99,8 @@ function getEtherscanLink(chainId, address, slug = "address") {
       return `https://goerli.etherscan.io/${slug}/${address}`;
     case 11155111:
       return `https://sepolia.etherscan.io/${slug}/${address}`;
-    case 31337:
-      return ``;
     default:
-      return `https://blockscan.com/${slug}/${address}`;
+      return ``;
   }
 }
 function getEtherscanLinkMd(chainId, address, slug = "address") {
@@ -125,7 +126,7 @@ function generateProxyInformationIfProxy({
   out += `\n\n_Proxy Information_\n\n`;
   out += `\n\nProxy Type: ${proxyType}\n\n`;
   out += `\n\nImplementation: ${getEtherscanLinkMd(chainId, implementation)}\n\n`;
-  out += `\n\nProxy Admin: ${getEtherscanLinkMd(chainId, proxyAdmin)}\n\n`;
+  if (proxyAdmin) out += `\n\nProxy Admin: ${getEtherscanLinkMd(chainId, proxyAdmin)}\n\n`;
 
   const historyOfProxy = history.filter((h) => h?.contracts[contractName]?.address === address);
   if (historyOfProxy.length === 0) return out;
@@ -151,7 +152,11 @@ function generateProxyInformationIfProxy({
             version ? `<a href="${projectGitUrl}/releases/tag/${version}" target="_blank">${version}</a>` : `N/A`
           }</td>
           <td>${getEtherscanLinkAnchor(chainId, implementation)}</td>
-          <td><a href="${projectGitUrl}/commit/${commitHash}" target="_blank">${commitHash.slice(0, 7)}</a></td>
+          <td>${
+            commitHash
+              ? `<a href="${projectGitUrl}/commit/${commitHash}" target="_blank">${commitHash.slice(0, 7)}</a>`
+              : `N/A`
+          }</td>
       </tr>`,
         )
         .join("")}
@@ -170,11 +175,14 @@ function generateDeploymentHistory(history, chainId) {
       ghostVersion,
     );
     const key = highestVersion === ghostVersion ? new Date(timestamp * 1000).toDateString() : highestVersion;
-    obj[key] = Object.entries(contracts).map(([contractName, contract]) => ({
-      contractName,
-      contract: { ...contract, timestamp, commitHash },
-      highestVersion,
-    }));
+    obj[key] = [
+      ...(obj[key] || []),
+      ...Object.entries(contracts).map(([contractName, contract]) => ({
+        contractName,
+        contract: { ...contract, timestamp, commitHash },
+        highestVersion,
+      })),
+    ];
     return obj;
   }, {});
 
@@ -182,66 +190,75 @@ function generateDeploymentHistory(history, chainId) {
   out += Object.entries(allVersions)
     .map(
       ([version, contractInfos]) => `
-  ### ${
-    contractInfos[0].highestVersion === ghostVersion
-      ? version
-      : `[${version}](${projectGitUrl}/releases/tag/${version})`
-  }
-  
-  ${prettifyTimestamp(contractInfos[0].contract.timestamp)}
-  
-  Commit Hash: [${contractInfos[0].contract.commitHash.slice(0, 7)}](${projectGitUrl}/commit/${
-    contractInfos[0].contract.commitHash
-  })
-  
-  Deployed contracts:
-  
-  ${contractInfos.length > 1 ? `- ` : ``}${contractInfos
-    .map(
-      ({ contract, contractName }) => `${
-        Object.keys(contract.input.constructor).length
-          ? `<details>
-    <summary>`
-          : ``
-      }<a href="${getEtherscanLink(chainId, contract.address) || contract.address}">${contractName
-        .replace(/([A-Z])/g, " $1")
-        .trim()}</a>${
-        contract.proxyType
-          ? ` (<a href="${
-              getEtherscanLink(chainId, contract.implementation) || contract.implementation
-            }">Implementation</a>)`
-          : ``
-      }${
-        isTransaction(contract.input.initializationTxn)
-          ? ` (<a href="${getEtherscanLink(chainId, contract.input.initializationTxn, "tx")}">Initialization Txn</a>)`
-          : ``
+### ${
+        contractInfos[0].highestVersion === ghostVersion
+          ? version
+          : `[${version}](${projectGitUrl}/releases/tag/${version})`
       }
-    ${
-      Object.keys(contract.input.constructor).length
-        ? `</summary>
-    <table>
-      <tr>
-          <th>Parameter</th>
-          <th>Value</th>
-      </tr>${Object.entries(contract.input.constructor)
-        .map(
-          ([key, value]) => `
-      <tr>
-          <td>${key}</td>
-          <td>${
-            isAddress(value) || isTransaction(value)
-              ? getEtherscanLinkAnchor(chainId, value, isTransaction(value) ? "tx" : "address")
-              : value
-          }</td>
-      </tr>`,
-        )
-        .join("")}
-    </table>
-`
+  
+  ${contractInfos[0].highestVersion === ghostVersion ? "" : prettifyTimestamp(contractInfos[0].contract.timestamp)}
+  
+Deployed contracts:
+  
+${contractInfos
+  .map(
+    ({ contract, contractName }) => `<details>
+  <summary>
+    <a href="${getEtherscanLink(chainId, contract.address) || contract.address}">${contractName
+      .replace(/([A-Z])/g, " $1")
+      .trim()}</a>${
+      contract.proxyType
+        ? ` (<a href="${
+            getEtherscanLink(chainId, contract.implementation) || contract.implementation
+          }">Implementation</a>)`
         : ``
-    }${Object.keys(contract.input.constructor).length ? `</details>` : ``}`,
-    )
-    .join("\n  - ")}    
+    }${
+      isTransaction(contract.input.initializationTxn)
+        ? ` (<a href="${getEtherscanLink(chainId, contract.input.initializationTxn, "tx")}">Initialization Txn</a>)`
+        : ``
+    }
+  </summary>
+  <table>
+    ${
+      contract.commitHash
+        ? `<tr>
+      <td>Commit hash: <a href="${projectGitUrl}/commit/${
+        contract.commitHash
+      }" target="_blank">${contract.commitHash.slice(0, 7)}</a></td>
+    </tr>`
+        : ``
+    }
+${
+  Object.keys(contract.input.constructor).length
+    ? `<tr>
+      <th>Parameter</th>
+      <th>Value</th>
+    </tr>${Object.entries(contract.input.constructor)
+      .map(
+        ([key, value]) => `
+    <tr>
+      <td>${key}</td>
+      <td>${
+        isAddress(value) || isTransaction(value)
+          ? getEtherscanLinkAnchor(chainId, value, isTransaction(value) ? "tx" : "address")
+          : typeof value === "object" && value !== null
+          ? JSON.stringify(value)
+          : value
+      }</td>
+    </tr>`,
+      )
+      .join("")}
+  </table>
+`
+    : ``
+}${
+      Object.keys(contract.input.constructor).length
+        ? `</details>`
+        : `  </table>
+</details>`
+    }`,
+  )
+  .join("\n")}    
   `,
     )
     .join("\n\n");
@@ -250,7 +267,7 @@ function generateDeploymentHistory(history, chainId) {
 }
 
 function prettifyTimestamp(timestamp) {
-  return new Date(timestamp * 1000).toUTCString().replace("GMT", "UTC");
+  return new Date(timestamp * 1000).toUTCString().replace("GMT", "UTC") + "\n";
 }
 
 function isTransaction(str) {
